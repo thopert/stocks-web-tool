@@ -1,0 +1,79 @@
+1. Suffix/Kürzelerweiterung für Handelsplatz in Search_Endpoint
+***************************************************************
+
+USA
++++++
+
+kein Suffix, nur Kürzel
+
+Deutschland
++++++++++++
+
+BER | BE -> Börse Berlin | Berlin
+DUS | DU -> Börse Düsseldorf | Dusseldorf
+FRK | F  -> Börse Frankfurt, XETRA | Frankfurt, Frankfurt/XETRA
+HAM | HM-> Börse Hamburg | Hamburg
+HAN | HA -> Börse Hannover | Hanover
+MUN | MU -> Börse München | Munich
+STG | SG -> Börse Stuttgart | Stuttgart
+
+Österreich
++++++++++++++
+
+VIE | Vi -> Wiener Börse | Vienna
+
+Schweiz
++++++++++
+
+SWI -> SIX Swiss Exchange | Switzerland
+
+London
+++++++++++++
+
+LON | L -> London Stock Exchange | United Kingdom
+
+
+2. Indices
+**************************************************
+AlphaVantage uses Reuters Instrument Code (RIC) (= yahoo finance codes)
+
+Symbols:
+Prefix = ^
+optional Suffix = i | I (= Index, Industrial)
+
+Österreich:
+ATX -> ^ATX
+
+Deutschland:
+
+DAX  -> ^GDAXI
+MDAX -> ^MDAXI
+SDAX -> ^SDAXI
+TecDAX -> ^TEXDAX
+CDAX -> ^FWBXX
+
+US:
+Dow Jones Industrial Average (Dow Jones 30) -> ^DJI
+Dow Jonses Transportation Average (Dow Jones 20) -> ^DJT
+Dow Jones Utility Average (Dow Jones 15) -> ^DJU
+
+S&P 500 -> ^GSPC
+S&P 100 -> ^OEX
+
+Russel 2000 -> ^RUT
+
+Japan:
+    Nikkei 225 -> ^N225
+
+EUR:
+EURO STOXX 50 -> ^STOXX50E
+
+Frankreich:
+CAC 40 (Französischer Leitindex) -> ^FCHI
+
+London:
+FTSE 100 (Financial Times Stock Exchange Index) -> ^FTSE
+
+Schweiz:
+SMI (Swiss Market Index) -> ^SSMI
+

@@ -1,0 +1,107 @@
+<ui:composition template="/templates/main/mainTemplate.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:c="http://java.sun.com/jstl/core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:o="http://omnifaces.org/ui">
+    <ui:define name="content">
+        <c:set scope="view" var="portfolioCurrency" value="#{exchangeRatesController.currentPortfolio.currency}"/>
+
+        <h:form prependId="false">
+
+            <h:outputText value="Wechselkurse der EZB" styleClass="h1"/>
+
+            <o:outputFormat value="Wechselkurse: {0}" styleClass="h2">
+                <o:param value="#{exchangeRatesController.latestExchangeRates.date}"/>
+            </o:outputFormat>
+
+            <div id="baseCurrencyInfo">
+                Angaben zur Basiswährung <span>#{portfolioCurrency}</span>
+            </div>
+
+            <p:dataTable id="exchangeRatesDT" value="#{exchangeRatesController.exchangeRateMap}"
+                         var="currencyToRateEntry">
+                <p:column headerText="Währung">
+                    <h:outputText value="#{currencyToRateEntry.key}"/>
+                </p:column>
+                <p:column headerText="Wechselkurs">
+                    <h:outputText value="#{currencyToRateEntry.value}"
+                                  converter="at.uibk.converter.ExchangeRateConverter"/>
+                </p:column>
+            </p:dataTable>
+
+            <h:outputText value="Historie" styleClass="h2"/>
+            <p:panelGrid columns="5" styleClass="ui-noborder float-right">
+                <p:commandLink id="dateRangeCL" action="#{exchangeRatesController.createChartDateRange()}"
+                               process="@this" update="dateRangeOP" oncomplete="PF('dateRangeDLG').show()">
+                    <o:outputFormat value="{0} - {1}"
+                                    rendered="#{not empty exchangeRatesController.lineChart.startDate}">
+                        <o:param value="#{exchangeRatesController.lineChart.startDate}"/>
+                        <o:param value="#{exchangeRatesController.lineChart.endDate}"/>
+                    </o:outputFormat>
+                    <h:outputText value="Datumsbereich" rendered="#{empty exchangeRatesController.lineChart.startDate}"/>
+                </p:commandLink>
+
+                <p:selectOneMenu value="#{exchangeRatesController.lineChart.monthsBack}">
+                    <f:selectItems value="#{exchangeRatesController.lineChart.timeRanges}"
+                                   var="timeRange" itemValue="#{timeRange.monthsBack}"
+                                   itemLabel="#{msg['chartTimeRange.' += timeRange]}"/>
+                    <p:ajax event="itemSelect" update="lineChart dateRangeCL"
+                            listener="#{exchangeRatesController.updateLineChartModel()}"/>
+                </p:selectOneMenu>
+
+                <p:selectOneMenu id="valueTypeSOM" value="#{exchangeRatesController.lineChart.valueType}">
+                    <f:selectItems value="#{exchangeRatesController.lineChart.valueTypes}" var="valueType"
+                                   itemLabel="#{portfolioCurrency += '/' += valueType}" itemValue="#{valueType}"/>
+                    <p:ajax event="itemSelect" update="lineChart percentSBB"
+                            listener="#{exchangeRatesController.updateLineChartModel()}"/>
+                </p:selectOneMenu>
+
+                <p:selectBooleanButton id="percentSBB"
+                                       value="#{exchangeRatesController.lineChart.percentMode}"
+                                       onLabel="%" offLabel="%"
+                                       disabled="#{not exchangeRatesController.lineChart.percentModeAllowed}">
+                    <p:ajax update="lineChart valueTypeSOM"
+                            listener="#{exchangeRatesController.updateLineChartModel()}"/>
+                </p:selectBooleanButton>
+
+            </p:panelGrid>
+
+            <p:lineChart id="lineChart" model="#{exchangeRatesController.lineChartModel}"
+                         style="width: 100%; height:50vh"/>
+
+            <p:outputPanel id="dateRangeOP">
+                <p:dialog id="dateRangeDLG" widgetVar="dateRangeDLG" header="Datumsbereich angeben" modal="true">
+                    <p:messages id="dateRangeMSGS"/>
+                    <p:panelGrid columns="2" styleClass="chartDateRange">
+                        <p:outputLabel value="Von:" for="startDate"/>
+                        <p:calendar id="startDate" value="#{exchangeRatesController.chartDateRange.startDate}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                    converter="#{converterFactory.localDateConverter}">
+                        </p:calendar>
+
+                        <p:outputLabel value="Bis:" for="endDate"/>
+                        <p:calendar id="endDate" value="#{exchangeRatesController.chartDateRange.endDate}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                    converter="#{converterFactory.localDateConverter}">
+                        </p:calendar>
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('dateRangeDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="ok" action="#{exchangeRatesController.applyChartDateRange()}"
+                                         process="dateRangeDLG" update="lineChart dateRangeMSGS dateRangeCL"
+                                         icon="pi pi-check"/>
+                    </p:panelGrid>
+
+                </p:dialog>
+            </p:outputPanel>
+
+        </h:form>
+    </ui:define>
+</ui:composition>
+

@@ -1,0 +1,273 @@
+<ui:composition template="/templates/main/mainTemplate.xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:c="http://java.sun.com/jstl/core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:o="http://omnifaces.org/ui">
+    <ui:define name="content">
+        <h:form prependId="false">
+
+            <h:outputText value="Aktien und ETFs" styleClass="h1"/>
+            <p:messages id="searchBarMSGS"/>
+            <p:focus/>
+
+            <p:panelGrid id="searchBarPG" columns="2" styleClass="ui-panelgrid-searchBar">
+                <h:outputLabel for="symbolAC" value="Symbol, Name, ISIN:"/>
+                <p:outputPanel class="ui-inputgroup">
+                    <p:autoComplete id="symbolAC" value="#{searchToolController.selectedInstrument}"
+                                    var="instrument" itemValue="#{instrument}"
+                                    itemLabel="#{instrument.stockIdentifier}"
+                                    completeMethod="#{searchToolController.instrumentSearchBar.search}"
+                                    forceSelection="true" minQueryLength="1" queryDelay="500" size="35">
+                        <p:column>
+                            <h:outputText value="#{instrument.symbol}"/>
+                        </p:column>
+                        <p:column>
+                            <h:outputText value="#{instrument.name}"/>
+                        </p:column>
+                        <p:column>
+                            <h:outputText value="#{instrument.isin}"/>
+                        </p:column>
+                        <p:column>
+                            <h:outputText value="#{instrument.stockExchange.name}"/>
+                        </p:column>
+                    </p:autoComplete>
+                    <p:commandButton action="#{searchToolController.fetchStockData()}"
+                                     process="@parent" update="searchResultOP searchBarMSGS" icon="pi pi-search"
+                                     onstart="PF('statusDialog').show()" oncomplete="PF('statusDialog').hide()"/>
+                </p:outputPanel>
+
+            </p:panelGrid>
+
+            <p:outputPanel id="searchResultOP">
+                <p:outputPanel rendered="#{not empty searchToolController.stockTimeSeries}">
+
+                    <c:set value="#{searchToolController.stockTimeSeries.change lt 0}" var="negativeChange"/>
+
+                    <p:outputPanel styleClass="searchTool-tabViewHeading">
+                        <o:outputFormat value="{0} | {1}" styleClass="stockName">
+                            <o:param value="#{searchToolController.selectedInstrument.name}"/>
+                            <o:param value="#{searchToolController.selectedInstrument.stockIdentifier}"/>
+                        </o:outputFormat>
+
+                        <i class="#{negativeChange ? 'pi pi-angle-double-down' : 'pi pi-angle-double-up'} stockPrice"
+                           style="#{negativeChange ? 'color: #c52b40;' : 'color: #34a060;'}"/>
+
+                        <h:outputText value="#{searchToolController.stockTimeSeries.price}"
+                                      converter="at.uibk.converter.PriceConverter" styleClass="stockPrice"/>
+                    </p:outputPanel>
+
+
+                    <p:tabView id="stockPerformance">
+                        <p:tab title="Kursinformationen">
+                            <p:panelGrid columns="2" styleClass="stockData">
+
+                                <h:outputText value="Datum:"/>
+                                <h:outputText value="#{searchToolController.stockTimeSeries.lastRefreshed}"/>
+
+                                <h:outputText value="Letzter Preis:"/>
+                                <h:outputText value="#{searchToolController.stockTimeSeries.price}"
+                                              converter="at.uibk.converter.PriceConverter"/>
+
+                                <h:outputText value="Eröffnungspreis:"/>
+                                <h:outputText value="#{searchToolController.stockTimeSeries.open}">
+                                    <f:convertNumber type="number" maxFractionDigits="4"/>
+                                </h:outputText>
+
+                                <h:outputText value="Tageshoch/-tief:"/>
+                                <o:outputFormat value="{0} / {1}">
+                                    <o:param value="#{searchToolController.stockTimeSeries.high}">
+                                        <f:converter converterId="at.uibk.converter.PriceConverter"/>
+                                    </o:param>
+                                    <o:param value="#{searchToolController.stockTimeSeries.low}">
+                                        <f:converter converterId="at.uibk.converter.PriceConverter"/>
+                                    </o:param>
+                                </o:outputFormat>
+
+                                <h:outputText value="Volumen (Stk.):"/>
+                                <h:outputText value="#{searchToolController.stockTimeSeries.volume}">
+                                    <f:convertNumber/>
+                                </h:outputText>
+
+                                <h:outputText value="Vortagespreis:"/>
+                                <h:outputText value="#{searchToolController.stockTimeSeries.previousClose}">
+                                    <f:convertNumber type="number" maxFractionDigits="4"/>
+                                </h:outputText>
+
+                                <h:outputText value="Differenz zum Vortag:"/>
+                                <o:outputFormat value="{0} / {1}">
+                                    <o:param value="#{searchToolController.stockTimeSeries.change}"
+                                             converter="at.uibk.converter.PriceConverter"/>
+                                    <o:param value="#{searchToolController.stockTimeSeries.changePercent}"
+                                             converter="at.uibk.converter.PercentConverter"/>
+                                </o:outputFormat>
+
+
+                                <h:outputText value="52-Wochen-Hoch/-Tief:"/>
+                                <o:outputFormat value="{0} / {1}">
+                                    <o:param value="#{searchToolController.stockTimeSeries.yearHigh}"
+                                             converter="at.uibk.converter.PriceConverter"/>
+                                    <o:param value="#{searchToolController.stockTimeSeries.yearLow}"
+                                             converter="at.uibk.converter.PriceConverter"/>
+                                </o:outputFormat>
+
+                                <h:outputText value="52-Wochen-Performance:"/>
+                                <o:outputFormat value="{0} / {1}">
+                                    <o:param value="#{searchToolController.stockTimeSeries.yearChange}"
+                                             converter="at.uibk.converter.PriceConverter"/>
+                                    <o:param value="#{searchToolController.stockTimeSeries.yearPercentChange}"
+                                                  converter="at.uibk.converter.PercentConverter"/>
+                                </o:outputFormat>
+
+                            </p:panelGrid>
+                        </p:tab>
+
+                        <p:tab title="Chart">
+                            <p:panelGrid id="chartOptions" columns="4" styleClass="chartToolbar">
+
+                                <p:commandLink id="dateRangeCL" action="#{searchToolController.createChartDateRange()}"
+                                               process="@this" update="dateRangeOP"
+                                               oncomplete="PF('dateRangeDLG').show()">
+                                    <o:outputFormat value="{0} - {1}"
+                                                    rendered="#{not empty searchToolController.lineChart.startDate}">
+                                        <o:param value="#{searchToolController.lineChart.startDate}"/>
+                                        <o:param value="#{searchToolController.lineChart.endDate}"/>
+                                    </o:outputFormat>
+                                    <h:outputText value="Datumsbereich"
+                                                  rendered="#{empty searchToolController.lineChart.startDate}"/>
+                                </p:commandLink>
+
+                                <p:selectOneMenu value="#{searchToolController.lineChart.monthsBack}">
+                                    <f:selectItems value="#{searchToolController.lineChart.timeRanges}"
+                                                   var="timeRange" itemValue="#{timeRange.monthsBack}"
+                                                   itemLabel="#{msg['chartTimeRange.' += timeRange]}"/>
+
+                                    <p:ajax event="itemSelect" update="lineChart dateRangeCL"
+                                            listener="#{searchToolController.updateLineChartModel()}"/>
+                                </p:selectOneMenu>
+
+                                <p:selectOneMenu value="#{searchToolController.lineChart.valueType}">
+                                    <f:selectItems value="#{searchToolController.lineChart.valueTypes}"/>
+                                    <p:ajax event="itemSelect" listener="#{searchToolController.updateLineChartModel()}"
+                                            update="lineChart"/>
+                                </p:selectOneMenu>
+
+                                <p:selectBooleanButton value="#{searchToolController.lineChart.percentMode}" onLabel="%"
+                                                       offLabel="%">
+                                    <p:ajax update="lineChart"
+                                            listener="#{searchToolController.updateLineChartModel()}"/>
+                                </p:selectBooleanButton>
+
+                            </p:panelGrid>
+
+                            <p:lineChart id="lineChart" model="#{searchToolController.lineChartModel}"
+                                         style="width: 100%; height: 50vh"/>
+
+                            <p:outputPanel id="dateRangeOP">
+
+                                <p:dialog id="dateRangeDLG" widgetVar="dateRangeDLG" header="Datumsbereich angeben"
+                                          modal="true">
+                                    <p:messages id="dateRangeMSGS"/>
+
+                                    <p:panelGrid columns="2" styleClass="chartDateRange">
+                                        <p:outputLabel value="Von:" for="startDate"/>
+                                        <p:calendar id="startDate"
+                                                    value="#{searchToolController.chartDateRange.startDate}"
+                                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de"
+                                                    navigator="true"
+                                                    converter="#{converterFactory.localDateConverter}">
+                                        </p:calendar>
+
+                                        <p:outputLabel value="Bis:" for="endDate"/>
+                                        <p:calendar id="endDate" value="#{searchToolController.chartDateRange.endDate}"
+                                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de"
+                                                    navigator="true"
+                                                    converter="#{converterFactory.localDateConverter}">
+                                        </p:calendar>
+                                    </p:panelGrid>
+
+                                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                                        <p:button icon="pi pi-times" value="abbrechen"
+                                                  onclick="PF('dateRangeDLG').hide(); return false;"
+                                                  styleClass="ui-button-cancel"/>
+
+                                        <p:commandButton value="ok"
+                                                         action="#{searchToolController.applyChartDateRange()}"
+                                                         process="dateRangeDLG"
+                                                         update="lineChart dateRangeMSGS dateRangeCL"
+                                                         icon="pi pi-check"/>
+                                    </p:panelGrid>
+
+                                </p:dialog>
+                            </p:outputPanel>
+
+                        </p:tab>
+
+                        <p:tab title="Performance">
+                            <p:barChart id="performanceChart"
+                                        model="#{searchToolController.performanceChart.setupChartModel()}"
+                                        style="width: 100%; height: 40vh; margin-bottom: 2em"/>
+
+                            <p:dataTable value="#{searchToolController.performanceMap}" var="performanceEntry"
+                                         styleClass="stockPerformance">
+                                <p:column headerText="Zeitraum">
+                                    <h:outputText value="#{performanceEntry.label}"/>
+                                </p:column>
+                                <!--<p:column headerText="Von">-->
+                                <!--<h:outputText value="#{performanceEntry.fromDate}"/>-->
+                                <!--</p:column>-->
+                                <!--<p:column headerText="Bis">-->
+                                <!--<h:outputText value="#{performanceEntry.toDate}"/>-->
+                                <!--</p:column>-->
+                                <!--<p:column headerText="Eröffnung">-->
+                                <!--<h:outputText value="#{performanceEntry.open}">-->
+                                <!--<f:convertNumber type="number" maxFractionDigits="2"/>-->
+                                <!--</h:outputText>-->
+                                <!--</p:column>-->
+                                <!--<p:column headerText="Ende">-->
+                                <!--<h:outputText value="#{performanceEntry.close}">-->
+                                <!--<f:convertNumber type="number" maxFractionDigits="2"/>-->
+                                <!--</h:outputText>-->
+                                <!--</p:column>-->
+                                <p:column headerText="Hoch">
+                                    <h:outputText value="#{performanceEntry.high}">
+                                        <f:convertNumber type="number" maxFractionDigits="2"/>
+                                    </h:outputText>
+                                </p:column>
+                                <p:column headerText="Tief">
+                                    <h:outputText value="#{performanceEntry.low}">
+                                        <f:convertNumber type="number" maxFractionDigits="2"/>
+                                    </h:outputText>
+                                </p:column>
+                                <p:column headerText="Schwankung">
+                                    <h:outputText value="#{performanceEntry.range}">
+                                        <f:convertNumber type="number" maxFractionDigits="2"/>
+                                    </h:outputText>
+                                </p:column>
+                                <p:column headerText="Entwicklung">
+                                    <h:outputText value="#{performanceEntry.change}"
+                                                  style="#{performanceEntry.change lt 0 ? 'color: #c52b40;' : 'color: #34a060;'}">
+                                        <f:convertNumber type="number" maxFractionDigits="2"/>
+                                    </h:outputText>
+                                    <h:outputText value=" | "/>
+                                    <h:outputText value="#{performanceEntry.percentChange}"
+                                                  style="#{performanceEntry.change lt 0 ? 'color: #c52b40;' : 'color: #34a060;'}">
+                                        <f:convertNumber type="percent" maxFractionDigits="2"/>
+                                    </h:outputText>
+                                </p:column>
+                            </p:dataTable>
+
+                            <!--<h:outputText value="Verluste/Gewinne pro Monat" styleClass="h2"/>-->
+                            <!--<p:barChart id="barChart" model="#{searchToolController.barChart.setupChartModel()}"-->
+                                        <!--style="width: 100%; height: 500px"/>-->
+
+                        </p:tab>
+
+                    </p:tabView>
+                </p:outputPanel>
+            </p:outputPanel>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

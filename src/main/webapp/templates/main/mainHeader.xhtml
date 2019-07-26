@@ -1,0 +1,43 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://java.sun.com/jsf/facelets"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:p="http://primefaces.org/ui">
+    <h:form id="headerForm" prependId="false">
+        <div class="ui-g">
+            <div class="ui-g-12 ui-lg-11 ui-xl-9 mainMenuWrapper">
+                <p:menubar>
+                    <p:submenu label="Portfolios">
+                        <p:menuitem value="Verwaltung" outcome="#{Pages.portfolioManagement}"/>
+                        <p:separator/>
+                        <p:menuitem value="Gesamtüberblick" outcome="#{Pages.portfolioComparison}"
+                                    onclick="PF('statusDialog').show()" oncomplete="PF('statusDialog').hide()"/>
+                    </p:submenu>
+                    <p:submenu label="Aktuelles Portfolio">
+                        <p:menuitem value="Neue Position" outcome="#{Pages.createHolding}"/>
+                        <p:separator/>
+                        <p:menuitem value="Überlick &amp; Verwaltung" outcome="#{Pages.holdingsManagement}"
+                                    onclick="PF('statusDialog').show()" oncomplete="PF('statusDialog').hide()"/>
+                        <p:separator/>
+                        <p:menuitem value="Analyse" outcome="#{Pages.portfolioInspection}"
+                                    onclick="PF('statusDialog').show()" oncomplete="PF('statusDialog').hide()"/>
+                    </p:submenu>
+                    <p:submenu label="Kurse &amp; Daten">
+                        <p:menuitem value="Aktien und ETFs" outcome="#{Pages.searchTool}"/>
+                        <p:separator/>
+                        <p:menuitem value="Wechselkurse der EZB" outcome="#{Pages.currentExchangeRates}"/>
+                        <p:separator/>
+                    </p:submenu>
+                    <p:menuitem value="Chart-Tool" outcome="#{Pages.chartTool}"/>
+                    <p:menuitem value="Import" outcome="#{Pages.csvImport}"/>
+                    <p:menuitem value="Alarme" outcome="#{Pages.stockPriceAlarm}"/>
+                    <p:submenu label="Mein Konto">
+                        <p:menuitem value="Meine Daten" outcome="#{Pages.userSettings}"/>
+                        <p:separator/>
+                        <p:menuitem value="Abmelden" action="#{accessController.logout}"/>
+                    </p:submenu>
+                </p:menubar>
+            </div>
+        </div>
+
+    </h:form>
+</ui:composition>

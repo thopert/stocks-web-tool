@@ -1,0 +1,14 @@
+<ui:composition xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui">
+
+    <div class="ui-g">
+        <div class="ui-g-12 ui-lg-11 ui-xl-9 outerMenuWrapper">
+            <p:menubar>
+                <p:menuitem id="homeItem" value="#{msg['menu.outer.home']}" outcome="#{Pages.index}"/>
+                <p:menuitem value="Anmeldung" outcome="#{Pages.login}"/>
+                <p:menuitem value="Registrierung" outcome="#{Pages.register}"/>
+            </p:menubar>
+        </div>
+    </div>
+</ui:composition>

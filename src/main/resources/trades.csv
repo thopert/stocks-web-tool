@@ -1,0 +1,4 @@
+date,symbol,mic,quantity,price,type,exchange rate,brokerage,brokerage currency
+01.01.2019,APC,FRK,1,120.0,BUY,1.14,1,EUR
+01.05.2019,APC,FRK,1,125.0,BUY,1.13,8,EUR
+01.05.2018,TSLA,VIE,1,320.0,BUY,1.1,5,EUR

@@ -1,0 +1,261 @@
+<ui:composition template="/templates/main/mainTemplate.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:c="http://java.sun.com/jstl/core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:o="http://omnifaces.org/ui"
+                xmlns:of="http://omnifaces.org/functions">
+    <ui:define name="content">
+
+        <h:form prependId="false">
+            <c:set value="#{portfolioInspectionController.currentPortfolioEager.currency}" var="portfolioCurrency"/>
+
+            <o:outputFormat id="heading" value="{0} | {1}" styleClass="h1">
+                <o:param value="#{portfolioInspectionController.portfolio.name}"/>
+                <o:param value="#{portfolioInspectionController.portfolioPerformance.currentValue}">
+                    <f:convertNumber type="currency" maxFractionDigits="2" currencySymbol="#{portfolioCurrency.symbol}"/>
+                </o:param>
+            </o:outputFormat>
+
+            <div class="pageSettings">
+                <p:selectBooleanCheckbox value="#{portfolioInspectionController.withClosed}"
+                                         itemLabel="Mit geschlossenen Positionen"
+                                         styleClass="small-font float-right">
+                    <p:ajax update="@form"/>
+                </p:selectBooleanCheckbox>
+            </div>
+
+            <div class="ui-g-12 chartWrapper">
+                <div class="ui-g-6">
+                    <h:outputText value="Zusammensetzung in %" styleClass="h2"/>
+                    <p:pieChart model="#{portfolioInspectionController.pieChartModel}"
+                                style="height: 25vh; width: 100%"/>
+                </div>
+
+                <div class="ui-g-6">
+                    <h:outputText value="Rendite in #{portfolioCurrency}" styleClass="h2"/>
+                    <p:barChart model="#{portfolioInspectionController.barChartModel}"
+                                style="height: 25vh; width: 100%"/>
+                </div>
+            </div>
+
+            <h:outputText value="Performance" styleClass="h2"/>
+
+            <p:dataTable value="#{portfolioInspectionController.portfolioPerformance.holdingPerformances}" var="hp"
+                         sortBy="#{hp.holding.name}" emptyMessage="Keine Positionen vorhanden!"
+                         styleClass="performanceOverview">
+                <p:column headerText="Position">
+                    <h:outputText value="#{hp.holding.name} (#{hp.holding.stockIdentifier})"/>
+                </p:column>
+                <!--<p:column headerText="Anteile">-->
+                <!--<h:outputText value="#{hp.numberOfShares}">-->
+                <!--<f:convertNumber maxFractionDigits="0"/>-->
+                <!--</h:outputText>-->
+                <!--</p:column>-->
+                <p:column headerText="Letzter Preis">
+                    <h:outputText value="#{hp.price}">
+                        <o:converter converterId="javax.faces.Number" type="currency" maxFractionDigits="2"
+                                     currencySymbol="#{hp.holding.currency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Aktueller Wert">
+                    <h:outputText value="#{hp.currentValue}">
+                        <f:convertNumber type="currency" maxFractionDigits="2"
+                                         currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Verkäufe">
+                    <h:outputText value="#{hp.totalSales}">
+                        <f:convertNumber type="currency" maxFractionDigits="2"
+                                         currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Dividenden">
+                    <h:outputText value="#{hp.totalDividends}">
+                        <f:convertNumber type="currency" maxFractionDigits="2"
+                                         currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Einnahmen">
+                    <h:outputText value="#{hp.totalEarnings}">
+                        <f:convertNumber type="currency" maxFractionDigits="2"
+                                         currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Ausgaben">
+                    <h:outputText value="#{hp.totalCosts}">
+                        <f:convertNumber type="currency" maxFractionDigits="2"
+                                         currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Rendite" sortBy="#{hp.totalReturn}">
+                    <o:outputFormat value="{0} ({1})">
+                        <o:param value="#{hp.totalReturn}">
+                            <f:convertNumber type="currency" maxFractionDigits="2"
+                                             currencySymbol="#{portfolioCurrency.symbol}"/>
+                        </o:param>
+                        <o:param value="#{hp.totalPercentReturn}"
+                                 converter="at.uibk.converter.PercentConverter"/>
+                    </o:outputFormat>
+                </p:column>
+                <p:columnGroup type="footer">
+                    <p:column colspan="2" style="text-align: right" footerText="Gesamt:"/>
+                    <p:column
+                            footerText="#{of:formatNumber(portfolioInspectionController.portfolioPerformance.currentValue, '###,##0.00')}
+                            #{portfolioCurrency.symbol}"/>
+                    <p:column
+                            footerText="#{of:formatNumber(portfolioInspectionController.portfolioPerformance.totalSales, '###,##0.00')}
+                            #{portfolioCurrency.symbol}"/>
+                    <p:column
+                            footerText="#{of:formatNumber(portfolioInspectionController.portfolioPerformance.totalDividends, '###,##0.00')}
+                            #{portfolioCurrency.symbol}"/>
+                    <p:column
+                            footerText="#{of:formatNumber(portfolioInspectionController.portfolioPerformance.totalEarnings, '###,##0.00')}
+                            #{portfolioCurrency.symbol}"/>
+                    <p:column
+                            footerText="#{of:formatNumber(portfolioInspectionController.portfolioPerformance.totalCosts, '###,##0.00')}
+                            #{portfolioCurrency.symbol}"/>
+                    <p:column
+                            footerText="#{of:formatNumber(portfolioInspectionController.portfolioPerformance.totalReturn,'###,##0.00')}
+                            #{portfolioCurrency.symbol} (#{of:formatNumber(portfolioInspectionController.portfolioPerformance.totalPercentReturnConverted,'###,##0.00')}%)"/>
+                </p:columnGroup>
+            </p:dataTable>
+
+            <h:outputText value="Historie" styleClass="h2"/>
+
+            <p:panelGrid id="chartOptions" columns="5" styleClass="chartToolbar">
+                <p:commandLink id="dateRangeCL" action="#{portfolioInspectionController.createChartDateRange()}"
+                               process="@this" update="dateRangeOP" oncomplete="PF('dateRangeDLG').show()">
+                    <o:outputFormat value="{0} - {1}"
+                                    rendered="#{not empty portfolioInspectionController.lineChart.startDate}">
+                        <o:param value="#{portfolioInspectionController.lineChart.startDate}"/>
+                        <o:param value="#{portfolioInspectionController.lineChart.endDate}"/>
+                    </o:outputFormat>
+                    <h:outputText value="Datumsbereich"
+                                  rendered="#{empty portfolioInspectionController.lineChart.startDate}"/>
+                </p:commandLink>
+
+                <p:selectOneMenu value="#{portfolioInspectionController.lineChart.monthsBack}">
+                    <f:selectItems value="#{portfolioInspectionController.lineChart.timeRanges}"
+                                   var="timeRange" itemValue="#{timeRange.monthsBack}"
+                                   itemLabel="#{msg['chartTimeRange.' += timeRange]}"/>
+                    <p:ajax event="itemSelect" update="lineChart dateRangeCL"
+                            listener="#{portfolioInspectionController.updateLineChartModel()}"/>
+                </p:selectOneMenu>
+
+                <p:selectOneMenu id="valueTypeSOM" value="#{portfolioInspectionController.lineChart.valueType}">
+                    <f:selectItems value="#{portfolioInspectionController.lineChart.valueTypes}" var="valueType"
+                                   itemLabel="#{msg['chartValueType.' += valueType]}" itemValue="#{valueType}"/>
+                    <p:ajax event="itemSelect" update="lineChart percentSBB"
+                            listener="#{portfolioInspectionController.updateLineChartModel()}"/>
+                </p:selectOneMenu>
+
+                <p:selectBooleanButton id="percentSBB"
+                                       value="#{portfolioInspectionController.lineChart.percentMode}"
+                                       onLabel="%" offLabel="%"
+                                       disabled="#{not portfolioInspectionController.lineChart.percentModeAllowed}">
+                    <p:ajax update="lineChart valueTypeSOM"
+                            listener="#{portfolioInspectionController.updateLineChartModel()}"/>
+                </p:selectBooleanButton>
+
+                <p:commandButton process="@this" update="settingsDLG" oncomplete="PF('settingsDLG').show()"
+                                 icon="pi pi-bars"/>
+            </p:panelGrid>
+
+
+            <p:lineChart id="lineChart" model="#{portfolioInspectionController.lineChartModel}"
+                         style="height: 50vh; width: 100%"/>
+
+            <p:outputPanel id="legendOP">
+                <p:panelGrid styleClass="chartLegend"
+                             rendered="#{not empty portfolioInspectionController.lineChart.chartEntries}">
+                    <p:row>
+                        <ui:repeat value="#{portfolioInspectionController.lineChart.chartEntries}"
+                                   var="chartEntry">
+                            <p:column>
+                                <p:outputPanel style="border-color: #{chartEntry.hexColor}">
+                                    <span style="#{not chartEntry.visible ? 'text-decoration: line-through' : ''}">
+                                        #{chartEntry.id}
+                                    </span>
+                                </p:outputPanel>
+                            </p:column>
+                        </ui:repeat>
+                    </p:row>
+                </p:panelGrid>
+            </p:outputPanel>
+
+            <p:dialog id="settingsDLG" widgetVar="settingsDLG" header="Chart Einstellungen" modal="true">
+                <p:messages id="settingsMSGS"/>
+                <p:panelGrid id="settingsPG" styleClass="ui-panelgrid-chartsettings">
+                    <p:row>
+                        <p:column>Symbol</p:column>
+                        <p:column>Sichtbar</p:column>
+                        <p:column>Farbe</p:column>
+                        <p:column>Preislinie</p:column>
+                    </p:row>
+                    <p:repeat value="#{portfolioInspectionController.lineChart.chartEntries}"
+                              var="chartEntry">
+                        <p:row>
+                            <p:column>
+                                <h:outputText value="#{chartEntry.id}"/>
+                            </p:column>
+                            <p:column>
+                                <p:selectBooleanCheckbox value="#{chartEntry.visible}"/>
+                            </p:column>
+                            <p:column>
+                                <p:colorPicker value="#{chartEntry.color}" mode="popup"/>
+                            </p:column>
+                            <p:column>
+                                <p:selectBooleanCheckbox value="#{chartEntry.withPriceLine}"/>
+                            </p:column>
+                        </p:row>
+                    </p:repeat>
+                </p:panelGrid>
+
+                <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                    <p:button onclick="PF('settingsDLG').hide(); return false;"
+                              value="abbrechen" icon="pi pi-times" styleClass="ui-button-cancel"/>
+
+                    <p:commandButton process="@this settingsPG" update="lineChart legendOP dateRangeCL settingsMSGS"
+                                     action="#{portfolioInspectionController.updateLineChartModel()}"
+                                     oncomplete="hideDialogOnSuccess(args, 'settingsDLG')"
+                                     value="ok" icon="pi pi-check"/>
+                </p:panelGrid>
+
+            </p:dialog>
+
+            <p:outputPanel id="dateRangeOP">
+                <p:dialog id="dateRangeDLG" widgetVar="dateRangeDLG" header="Datumsbereich angeben" modal="true">
+                    <p:messages id="dateRangeMSGS"/>
+                    <p:panelGrid columns="2" styleClass="chartDateRange">
+                        <p:outputLabel value="Von:" for="startDate"/>
+                        <p:calendar id="startDate" value="#{portfolioInspectionController.chartDateRange.startDate}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                    converter="#{converterFactory.localDateConverter}">
+                        </p:calendar>
+
+                        <p:outputLabel value="Bis:" for="endDate"/>
+                        <p:calendar id="endDate" value="#{portfolioInspectionController.chartDateRange.endDate}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                    converter="#{converterFactory.localDateConverter}">
+                        </p:calendar>
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('dateRangeDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="ok" action="#{portfolioInspectionController.applyChartDateRange()}"
+                                         process="dateRangeDLG" update="lineChart dateRangeMSGS dateRangeCL"
+                                         icon="pi pi-check"/>
+                    </p:panelGrid>
+
+                </p:dialog>
+            </p:outputPanel>
+
+            <p:ajaxStatus onstart="PF('statusDialog').show()" onsuccess="PF('statusDialog').hide()"/>
+        </h:form>
+    </ui:define>
+</ui:composition>

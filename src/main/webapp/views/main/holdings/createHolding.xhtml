@@ -1,0 +1,263 @@
+<ui:composition template="/templates/main/mainTemplate.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:jsf="http://xmlns.jcp.org/jsf"
+                xmlns:c="http://java.sun.com/jstl/core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:o="http://omnifaces.org/ui">
+    <ui:define name="content">
+        <p:importConstants type="at.uibk.controller.holdings.CreateHoldingController"/>
+
+        <p:importEnum type="at.uibk.model.mainEntities.ExchangeRateDirection"/>
+
+        <c:set scope="view" var="portfolioCurrency" value="#{createHoldingController.currentPortfolio.currency}"/>
+
+        <h:form prependId="false">
+
+            <h:outputText value="Position eröffnen" styleClass="h1"/>
+
+            <p:wizard widgetVar="wiz" flowListener="#{createHoldingController.handleFlow}" nextLabel="weiter"
+                      backLabel="zurück">
+
+                <p:tab id="#{CreateHoldingController.SEARCH_TAB_ID}" title="1. Auswahl">
+
+                    <p:focus for="keyWordsIT"/>
+
+                    <p:panel styleClass="ui-g-12" header="Finanzprodukt finden">
+                        <p:messages><p:autoUpdate/></p:messages>
+
+                        <p:panelGrid columns="2" styleClass="ui-panelgrid-searchBar">
+
+                            <h:outputLabel for="keyWordsIT" value="Symbol, Name, ISIN:"/>
+                            <p:inputText id="keyWordsIT" value="#{createHoldingController.instrumentSearchBar.searchTerm}"
+                                         placeholder="Suche" size="35">
+                                <p:ajax event="keyup" update="instrumentDT" delay="750"
+                                        listener="#{createHoldingController.instrumentSearchBar.search()}"/>
+                                <!--<p:ajax event="select" update="instrumentDT" delay="750"-->
+                                        <!--listener="#{createHoldingController.instrumentSearchBar.search()}"/>-->
+                            </p:inputText>
+
+                        </p:panelGrid>
+
+                        <p:dataTable id="instrumentDT" value="#{createHoldingController.instrumentSearchBar.instruments}"
+                                     var="instrument" selection="#{createHoldingController.selectedInstrument}"
+                                     rowKey="#{instrument.id}" styleClass="instrumentSearch" emptyMessage="Keine Suchergebnisse!">
+
+                            <p:column headerText="Auswahl" selectionMode="single" style="text-align: center"/>
+
+                            <p:column headerText="Name">
+                                <h:outputText value="#{instrument.name}"/>
+                            </p:column>
+
+                            <p:column headerText="Handelsplatz">
+                                <h:outputText value="#{instrument.stockExchange.name}"/>
+                            </p:column>
+
+                            <p:column headerText="Währung">
+                                <h:outputText value="#{instrument.currency}"/>
+                            </p:column>
+
+                            <p:column headerText="Symbol">
+                                <h:outputText value="#{instrument.symbol}"/>
+                            </p:column>
+
+                            <p:column headerText="ISIN">
+                                <h:outputText value="#{instrument.isin}"/>
+                            </p:column>
+
+                        </p:dataTable>
+
+                    </p:panel>
+                </p:tab>
+
+                <p:tab id="#{CreateHoldingController.DETAILS_TAB_ID}" title="2. Details">
+                    <c:set var="instrument" value="#{createHoldingController.selectedInstrument}"/>
+                    <c:set var="stockExchange"
+                           value="#{createHoldingController.selectedInstrument.stockExchange.name}"/>
+
+                    <c:set var="holdingCurrency" value="#{createHoldingController.selectedInstrument.currency}"/>
+
+                    <p:panel header="Angaben zum Kauf" styleClass="ui-g-12 tradeDetailsPanel">
+                        <!--<p:messages showSummary="true" showDetail="false"><p:autoUpdate/></p:messages>-->
+
+                        <p:panelGrid id="tradeDetailsPG" columns="2" styleClass="ui-panelgrid-inputWithTotal center">
+
+                            <p:outputLabel for="date" value="Datum:"/>
+                            <p:calendar id="date" value="#{createHoldingController.tradePlaceHolder.date}"
+                                        pattern="dd.MM.yyyy" mode="popup" showOn="button" navigator="true"
+                                        mask="true" locale="de"
+                                        converter="#{converterFactory.localDateConverter}">
+                                <p:ajax event="dateSelect" listener="#{createHoldingController.updateProposals()}"
+                                        update="@this priceProposal exchangeRateProposal"/>
+                            </p:calendar>
+
+                            <p:outputLabel for="quantity" value="Anteile: "/>
+                            <p:inputNumber id="quantity" value="#{createHoldingController.tradePlaceHolder.quantity}"
+                                           size="10" decimalPlaces="0"
+                                           validator="at.uibk.validator.BigDecimalGreaterZeroValidator">
+                                <p:ajax event="blur" update="@this totalCashFlowOT"/>
+                            </p:inputNumber>
+
+                            <p:outputLabel for="price" value="Preis (#{holdingCurrency}):"/>
+                            <p:outputPanel>
+                                <p:inputNumber id="price" value="#{createHoldingController.tradePlaceHolder.price}"
+                                               decimalSeparator="," size="10" decimalPlaces="2"
+                                               validator="at.uibk.validator.BigDecimalGreaterZeroValidator">
+                                    <p:ajax event="blur" update="@this totalCashFlowOT"/>
+                                </p:inputNumber>
+
+                                <p:outputPanel id="priceProposal" layout="inline">
+                                    <p:commandLink id="priceCL"
+                                                   rendered="#{not empty createHoldingController.priceProposal}"
+                                                   action="#{createHoldingController.priceProposalListener}"
+                                                   process="@this" update="price totalCashFlowOT"
+                                                   style="color: gray; margin-left: 1em">
+                                        <h:outputText value="#{createHoldingController.priceProposal.close}">
+                                            <f:converter converterId="at.uibk.converter.PriceConverter"/>
+                                        </h:outputText>
+                                    </p:commandLink>
+
+                                    <i jsf:id="priceQuestion"
+                                       jsf:rendered="#{not empty createHoldingController.priceProposal}"
+                                       class="pi pi-question-circle" style="color: gray"/>
+
+                                    <p:tooltip for="priceQuestion"
+                                               rendered="#{not empty createHoldingController.priceProposal}">
+                                        <o:outputFormat value="Letzter Preis vom {0}">
+                                            <o:param value="#{createHoldingController.priceProposal.date}"/>
+                                        </o:outputFormat>
+                                    </p:tooltip>
+                                </p:outputPanel>
+                            </p:outputPanel>
+
+                            <p:outputLabel for="exchangeRate" value="Wechselkurs:"
+                                           rendered="#{holdingCurrency ne portfolioCurrency}"/>
+                            <p:outputPanel rendered="#{holdingCurrency ne portfolioCurrency}">
+
+                                <p:inputNumber id="exchangeRate"
+                                               value="#{createHoldingController.tradePlaceHolder.exchangeRate}"
+                                               size="10" decimalPlaces="4" decimalSeparator=","
+                                               validator="at.uibk.validator.BigDecimalGreaterZeroValidator">
+                                    <p:ajax event="blur" update="@this totalCashFlowOT"/>
+                                </p:inputNumber>
+
+                                <p:selectOneMenu
+                                        value="#{createHoldingController.tradePlaceHolder.exchangeRateDirection}">
+                                    <f:selectItem itemValue="#{ExchangeRateDirection.DEFAULT}"
+                                                  itemLabel="#{portfolioCurrency += '/' += holdingCurrency}"/>
+                                    <f:selectItem itemValue="#{ExchangeRateDirection.REVERSE}"
+                                                  itemLabel="#{holdingCurrency += '/' += portfolioCurrency}"/>
+                                    <p:ajax event="itemSelect" update="exchangeRateProposal totalCashFlowOT"/>
+                                </p:selectOneMenu>
+
+                                <p:outputPanel id="exchangeRateProposal" layout="inline">
+                                    <p:commandLink id="exchangeRateCL" rendered="#{not empty
+                                    createHoldingController.exchangeRateProposal}"
+                                                   action="#{createHoldingController.exchangeRateListener}"
+                                                   process="@this" update="exchangeRate totalCashFlowOT"
+                                                   style="color: gray; margin-left: 1em">
+                                        <h:outputText value="#{createHoldingController.exchangeRateProposal.rate}">
+                                            <f:converter converterId="at.uibk.converter.ExchangeRateConverter"/>
+                                        </h:outputText>
+                                    </p:commandLink>
+
+                                    <i jsf:id="exchangeRateQuestion"
+                                       jsf:rendered="#{not empty createHoldingController.exchangeRateProposal}"
+                                       class="pi pi-question-circle" style=" color: gray"/>
+
+                                    <p:tooltip for="exchangeRateQuestion">
+                                        <o:outputFormat value="Wechselkurs der EZB vom {0}"
+                                                        rendered="#{not empty createHoldingController.exchangeRateProposal}">
+                                            <o:param value="#{createHoldingController.exchangeRateProposal.date}"/>
+                                        </o:outputFormat>
+                                    </p:tooltip>
+                                </p:outputPanel>
+                            </p:outputPanel>
+
+                            <p:outputLabel for="brokerage" value="Gebühren: "/>
+                            <p:outputPanel>
+                                <p:inputNumber id="brokerage"
+                                               value="#{createHoldingController.tradePlaceHolder.brokerage}"
+                                               size="10" decimalPlaces="2" decimalSeparator=","
+                                validator="at.uibk.validator.BigDecimalNotNegativeValidator">
+                                    <p:ajax event="blur" update="@this totalCashFlowOT"/>
+                                </p:inputNumber>
+                                <p:selectOneMenu id="brokerageCurrency"
+                                                 value="#{createHoldingController.tradePlaceHolder.brokerageCurrency}">
+                                    <f:selectItems
+                                            value="#{createHoldingController.tradePlaceHolder.brokerageCurrencies}"/>
+                                    <p:ajax update="totalCashFlowOT"/>
+                                </p:selectOneMenu>
+                            </p:outputPanel>
+
+                            <h:outputText value="Gesamt (#{portfolioCurrency}):"/>
+                            <h:outputText id="totalCashFlowOT"
+                                          value="#{createHoldingController.tradePlaceHolder.cashFlowInPortfolioCurrency}">
+                                <f:convertNumber  maxFractionDigits="2"/>
+                            </h:outputText>
+                        </p:panelGrid>
+                    </p:panel>
+                </p:tab>
+
+                <p:tab id="#{CreateHoldingController.COMPLETION_TAB_ID}" title="3. Bestätigung">
+                    <p:panel styleClass="ui-g-12 tradeConfirmationPanel" header="Position wurde erfolgreich erstellt">
+                        <p:messages><p:autoUpdate/></p:messages>
+
+                        <p:panelGrid id="tradeOverviewPG" columns="2" styleClass="center ui-panelgrid-inputWithTotal">
+
+                            <h:outputText value="Position:"/>
+                            <h:outputText value="#{createHoldingController.tradePlaceHolder.holding.name}"/>
+
+                            <h:outputText value="Handelsplatz:"/>
+                            <h:outputText
+                                    value="#{createHoldingController.tradePlaceHolder.holding.stockExchange.name}"/>
+
+                            <h:outputText value="Datum:"/>
+                            <h:outputText value="#{createHoldingController.tradePlaceHolder.date}"/>
+
+                            <h:outputText value="Anteile:"/>
+                            <h:outputText value="#{createHoldingController.tradePlaceHolder.quantity}">
+                                    <f:convertNumber maxFractionDigits="0"/>
+                            </h:outputText>
+
+                            <h:outputText value="Preis:"/>
+                            <h:outputText value="#{createHoldingController.tradePlaceHolder.price}">
+                                <f:convertNumber type="currency" maxFractionDigits="2"
+                                                 currencySymbol="#{holdingCurrency.symbol}"/>
+                            </h:outputText>
+
+                            <h:outputText value="Wechselkurs:"
+                                          rendered="#{not createHoldingController.tradePlaceHolder.holding.hasPortfolioCurrency()}"/>
+                            <h:outputFormat value="{0} {1}"
+                                            rendered="#{not createHoldingController.tradePlaceHolder.holding.hasPortfolioCurrency()}">
+                                <o:param value="#{createHoldingController.tradePlaceHolder.exchangeRate}">
+                                    <f:convertNumber maxFractionDigits="4"/>
+                                </o:param>
+                                <o:param
+                                        value="#{createHoldingController.tradePlaceHolder.exchangeRateDirectionLabel}"/>
+                            </h:outputFormat>
+
+                            <h:outputText value="Gebühren:"/>
+                            <h:outputText
+                                    value="#{createHoldingController.tradePlaceHolder.brokerageInPortfolioCurrency}">
+                                <f:convertNumber type="currency" maxFractionDigits="2"
+                                                 currencySymbol="#{portfolioCurrency.symbol}"/>
+                            </h:outputText>
+
+                            <h:outputText value="Gesamt:"/>
+                            <h:outputText
+                                    value="#{createHoldingController.tradePlaceHolder.cashFlowInPortfolioCurrency}">
+                                <f:convertNumber type="currency" maxFractionDigits="2"
+                                                 currencySymbol="#{portfolioCurrency.symbol}"/>
+                            </h:outputText>
+                        </p:panelGrid>
+                    </p:panel>
+                </p:tab>
+
+            </p:wizard>
+            <p:ajaxStatus onstart="PF('statusDialog').show()" oncomplete="PF('statusDialog').hide()"/>
+        </h:form>
+    </ui:define>
+</ui:composition>

@@ -1,0 +1,38 @@
+<ui:composition template="/templates/outer/outerTemplate.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui">
+    <ui:define name="content">
+        <h:form prependId="false">
+            <p:messages id="registerMSGS" style="width: 100%"/>
+            <div class="ui-g">
+                <p:fieldset legend="Registrierung"
+                            styleClass="ui-g-7 ui-md-5 ui-lg-4 outerFieldSet">
+                    <p:panelGrid columns="1" layout="grid" columnClasses="ui-grid-col-12"
+                                 styleClass="ui-panelgrid-blank ui-fluid">
+                        <p:outputLabel for="email" value="#{msg['register.email']}"/>
+                        <p:inputText id="email" value="#{registerController.user.email}"
+                        maxlength="30"/>
+
+                        <p:outputLabel for="firstName" value="#{msg['register.firstName']}"/>
+                        <p:inputText id="firstName" value="#{registerController.user.firstName}"
+                                     styleClass="loginEntry" maxlength="30"/>
+
+                        <p:outputLabel for="lastName" value="#{msg['register.secondName']}"/>
+                        <p:inputText id="lastName" value="#{registerController.user.lastName}"
+                                     maxlength="30"/>
+
+                        <p:outputLabel for="password" value="#{msg['register.password']}"/>
+                        <p:password id="password" value="#{registerController.user.password}"
+                        maxlength="30"/>
+
+                        <p:commandButton value="ok"
+                                         action="#{registerController.register}"
+                                         process="@parent" update="registerMSGS @parent"/>
+                    </p:panelGrid>
+                </p:fieldset>
+            </div>
+        </h:form>
+    </ui:define>
+</ui:composition>

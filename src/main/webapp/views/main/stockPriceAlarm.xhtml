@@ -1,0 +1,133 @@
+<ui:composition template="/templates/main/mainTemplate.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:o="http://omnifaces.org/ui"
+                xmlns:of="http://omnifaces.org/functions">
+
+    <ui:define name="content">
+        <p:importEnum type="at.uibk.model.mainEntities.StockPriceAlarmType"/>
+
+        <h:form prependId="false">
+
+            <h:outputText value="Meine Alarme" styleClass="h1"/>
+
+            <p:growl id="growl" life="5000"/>
+
+            <p:panelGrid id="createAlarmPG" columns="2" styleClass="float-right ui-noborder">
+                <p:selectOneMenu value="#{stockPriceAlarmController.selectedHoldingId}"
+                                 disabled="#{empty stockPriceAlarmController.holdings}">
+                    <f:selectItems value="#{stockPriceAlarmController.holdings}" var="h"
+                                   itemLabel="#{h.symbol += ' | ' += h.stockExchange.name}"
+                                   itemValue="#{h.id}"/>
+                </p:selectOneMenu>
+
+                <p:commandButton action="#{stockPriceAlarmController.createPlaceHolder}"
+                                 process="createAlarmPG" update="alarmOP"
+                                 disabled="#{empty stockPriceAlarmController.holdings}"
+                                 value="neuer Alarm" icon="pi pi-plus"
+                                 onstart="PF('statusDialog').show()"
+                                 oncomplete="PF('statusDialog').hide(); PF('alarmDLG').show();"/>
+            </p:panelGrid>
+
+            <p:dataTable id="alarmDT" value="#{stockPriceAlarmController.stockPriceAlarms}" var="alarm"
+                         emptyMessage="Keine Alarme vorhanden!" styleClass="ui-datatable-menucolumn">
+                <p:column rendered="false">
+                    <p:commandLink value="email test" action="#{stockPriceAlarmController.sendAlarm(alarm)}"
+                                   update="growl"/>
+                </p:column>
+                <p:column headerText="Aktiv">
+                    <h:outputText value="#{alarm.activated ? 'ja' : 'nein'}"/>
+                </p:column>
+                <p:column headerText="Typ">
+                    <h:outputText value="#{msg['stockPriceAlarmType.' += alarm.type]}"/>
+                </p:column>
+                <p:column headerText="Referenzpreis">
+                    <h:outputText value="#{alarm.referencePrice}">
+                        <f:convertNumber type="number" maxFractionDigits="2"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Limit">
+                    <o:outputFormat value="{0}{1}">
+                        <o:param value="#{alarm.amount}">
+                            <f:convertNumber maxFractionDigits="2"/>
+                        </o:param>
+                        <o:param value="#{alarm.type.percent ? '%' : ''}"/>
+                    </o:outputFormat>
+                </p:column>
+                <p:column headerText="Position">
+                    <h:outputText value="#{alarm.holding.fullyQualifiedSymbol}"/>
+                </p:column>
+                <p:column>
+                    <p:menuButton icon="pi pi-bars">
+                        <p:menuitem value="löschen" icon="pi pi-trash"
+                                    action="#{stockPriceAlarmController.remove(alarm)}"
+                                    process="@this" update="alarmDT"/>
+                        <p:separator/>
+                        <p:menuitem value="editieren" icon="pi pi-pencil"
+                                    action="#{stockPriceAlarmController.setPlaceHolder(alarm)}"
+                                    process="@this" update="alarmOP" oncomplete="PF('alarmDLG').show()"/>
+                    </p:menuButton>
+                </p:column>
+            </p:dataTable>
+
+            <p:outputPanel id="alarmOP">
+                <p:dialog id="alarmDLG" widgetVar="alarmDLG"
+                          header="Alarm #{stockPriceAlarmController.editMode ? 'editieren' : 'erstellen'}"
+                          rendered="#{not empty stockPriceAlarmController.placeHolder}" modal="true">
+
+                    <p:messages id="alarmMSGS"/>
+                    <p:panelGrid id="alarmPG" columns="2" styleClass="ui-panelgrid-dialogContent">
+
+                        <p:outputLabel value="Position:"/>
+                        <o:outputFormat value="{0} ({1})">
+                            <o:param value="#{stockPriceAlarmController.placeHolder.holding.name}"/>
+                            <o:param value="#{stockPriceAlarmController.placeHolder.holding.stockIdentifier}"/>
+                        </o:outputFormat>
+
+                        <h:outputText value="Letzter Preis:"/>
+                        <h:outputText id="referenceValue"
+                                      value="#{stockPriceAlarmController.placeHolder.referencePrice}"
+                                      converter="at.uibk.converter.PriceConverter"/>
+
+                        <p:outputLabel value="Aktiv:"/>
+                        <p:selectBooleanCheckbox value="#{stockPriceAlarmController.placeHolder.activated}"/>
+
+                        <p:outputLabel value="Typ:"/>
+                        <p:selectOneMenu value="#{stockPriceAlarmController.placeHolder.type}">
+                            <f:selectItems value="#{stockPriceAlarmController.stockPriceAlarmTypes}" var="type"
+                                           itemValue="#{type}"
+                                           itemLabel="#{msg['stockPriceAlarmType.' += type]}"/>
+                        </p:selectOneMenu>
+
+                        <p:outputLabel value="Wert:"/>
+                        <p:selectOneMenu value="#{stockPriceAlarmController.placeHolder.amount}"
+                                         editable="true" validator="at.uibk.validator.BigDecimalGreaterZeroValidator">
+                            <f:selectItem
+                                    itemLabel="52 Wochenhoch (#{of:formatNumber(stockPriceAlarmController.currentStockTimeSeries.yearHigh, '#.##')})"
+                                    itemValue="#{stockPriceAlarmController.currentStockTimeSeries.yearHigh}"/>
+                            <f:selectItem
+                                    itemLabel="52 Wochentief (#{of:formatNumber(stockPriceAlarmController.currentStockTimeSeries.yearLow, '#.##')})"
+                                    itemValue="#{stockPriceAlarmController.currentStockTimeSeries.yearLow}"/>
+                            <f:convertNumber type="number" maxFractionDigits="2"/>
+                        </p:selectOneMenu>
+
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('alarmDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+                        <p:commandButton value="ok" action="#{stockPriceAlarmController.persist()}"
+                                         process="alarmDLG" update="alarmMSGS"
+                                         oncomplete="hideDialogOnSuccess(args, 'alarmDLG')"
+                                         icon="pi pi-check"/>
+                    </p:panelGrid>
+                    <p:ajax event="close" listener="#{stockPriceAlarmController.cleanUp()}"
+                            update="alarmDT alarmOP"/>
+                </p:dialog>
+            </p:outputPanel>
+        </h:form>
+    </ui:define>
+</ui:composition>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:h="http://xmlns.jcp.org/jsf/html"
+      xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+      xmlns:f="http://xmlns.jcp.org/jsf/core"
+      xmlns:p="http://primefaces.org/ui">
+<!--<f:loadBundle var="msg" basename="messages"/>-->
+<p:importConstants type="at.uibk.navigation.Pages"/>
+<h:head>
+    <title><h:outputText value="#{msg['title']}"/></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</h:head>
+<h:body>
+    <f:view>
+        <ui:insert name="metadata"/>
+    </f:view>
+
+    <h:outputStylesheet library="css" name="style.css"/>
+
+    <div id="pageContainer">
+        <div class="ui-g">
+            <div id="outerHeader" class="ui-g-12">
+                <ui:include src="/templates/outer/outerHeader.xhtml"/>
+            </div>
+
+            <div id="outerMain" class="ui-g-12 ui-lg-11 ui-xl-9">
+                <ui:insert name="content"/>
+            </div>
+
+            <div id="outerFooter" class="ui-g-12">
+                <ui:include src="/templates/outer/outerFooter.xhtml"/>
+            </div>
+
+        </div>
+    </div>
+</h:body>
+</html>

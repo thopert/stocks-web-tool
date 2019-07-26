@@ -1,0 +1,287 @@
+<ui:composition template="/templates/main/mainTemplate.xhtml"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:c="http://xmlns.jcp.org/jsp/jstl/core"
+                xmlns:jsf="http://xmlns.jcp.org/jsf"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:o="http://omnifaces.org/ui">
+    <ui:define name="content">
+        <p:importConstants type="at.uibk.controller.csv.CsvImportController"/>
+        <p:importEnum type="at.uibk.model.mainEntities.ExchangeRateDirection"/>
+        <p:importEnum type="at.uibk.model.mainEntities.TradeType"/>
+        <p:importEnum type="at.uibk.csv.CSVHeaderType"/>
+
+        <c:set value="#{csvImportController.currentPortfolio.currency}" var="portfolioCurrency"/>
+
+        <h:form prependId="false" enctype="multipart/form-data">
+
+            <h:outputText value="Portfolio importieren" styleClass="h1"/>
+
+            <p:wizard widgetVar="wizard" flowListener="#{csvImportController.handleFlow}" nextLabel="weiter"
+                      backLabel="zurück">
+
+                <p:tab id="#{CsvImportController.UPLOAD_TAB}" title="1. Datei hochladen">
+
+                    <p:panel styleClass="ui-g-12" header="CSV-Datei auswählen">
+
+                        <p:outputPanel id="lastFileUploadOP">
+                            <h:outputText id="lastFileUploadName"
+                                          value="Zuletzt hochgeladen: #{csvImportController.uploadedFile.fileName}"
+                                          rendered="#{not empty csvImportController.uploadedFile}"/>
+                        </p:outputPanel>
+
+                        <p:fileUpload id="fileUpload" value="#{csvImportController.uploadedFile}"
+                                      fileUploadListener="#{csvImportController.handleFileUpload}"
+                                      update="fileUploadMSG lastFileUploadOP" allowTypes="/(\.|\/)(csv)$/"
+                                      sizeLimit="10000" label="Auswahl" uploadLabel="Hochladen"
+                                      cancelLabel="Abbrechen"/>
+                        <p:messages id="fileUploadMSG" styleClass="clear"/>
+                    </p:panel>
+
+                </p:tab>
+
+                <p:tab id="#{CsvImportController.HEADERS_TAB}" title="2. CSV-Spalten zuordnen">
+                    <p:panel styleClass="ui-g-12" header="Passende Felder über Dropdown-Listen auswählen">
+
+                        <div id="csvHeadersInfo">
+                            <h:outputText id="csvHeadersInfoText" value="* kennzeichnet Pflichtfeld" />
+                        </div>
+
+                        <p:panelGrid id="csvHeadersPG" styleClass="ui-panelgrid-csvHeaders">
+                            <f:facet name="header">
+                                <p:row>
+                                    <p:column><h:outputText value="Attribut"/></p:column>
+                                    <p:column/>
+                                    <p:column><h:outputText
+                                            value="#{csvImportController.uploadedFile.fileName}"/></p:column>
+                                </p:row>
+                            </f:facet>
+                            <p:repeat value="#{csvImportController.csvHeaders.headers}" var="csvHeader">
+                                <p:row>
+
+                                    <p:column>
+                                        <o:outputFormat value="{0}{1}">
+                                            <o:param value="#{msg['csvHeaderType.' += csvHeader.type]}"/>
+                                            <o:param value="#{csvHeader.type.obligatory ? '*' : ''}"/>
+                                        </o:outputFormat>
+                                    </p:column>
+
+                                    <p:column><i class="pi pi-arrow-right"/></p:column>
+
+                                    <p:column>
+                                        <p:selectOneMenu value="#{csvHeader.name}">
+                                            <f:selectItem itemValue="#{null}" itemLabel="Nicht zugeordnet"/>
+                                            <f:selectItems value="#{csvImportController.csvHeaders.selectableNames}"/>
+                                        </p:selectOneMenu>
+                                    </p:column>
+                                </p:row>
+                            </p:repeat>
+                        </p:panelGrid>
+                        <p:messages/>
+                    </p:panel>
+                </p:tab>
+
+                <p:tab id="#{CsvImportController.TRADES_TAB}" title="3. Import bearbeiten">
+                    <p:panel header="Käufe/Verkäufe überprüfen und editieren" styleClass="ui-g-12">
+                        <p:messages/>
+
+                        <p:repeat value="#{csvImportController.csvHoldings}" var="holding" varStatus="loopStatus">
+                            <div id="csvRepeatContainer">
+                                <p:panelGrid columns="2" styleClass="csvInstrumentPG">
+                                    <p:outputLabel value="Position:"/>
+                                    <p:outputPanel>
+                                        <p:inputText id="symbol" value="#{holding.symbol}" required="true">
+                                            <p:keyFilter regEx="/[a-zA-Z0-9]/i"/>
+                                        </p:inputText>
+
+                                        <p:selectOneMenu value="#{holding.stockExchange}">
+                                            <f:selectItems value="#{csvImportController.stockExchanges}"
+                                                           var="exchange" itemValue="#{exchange}"
+                                                           itemLabel="#{exchange.name}"/>
+                                            <p:ajax event="itemSelect"
+                                                    listener="#{csvImportController.handleStockExchangeSelection(holding.id)}"
+                                                    update="@parent:@parent:@next"/>
+                                        </p:selectOneMenu>
+                                    </p:outputPanel>
+                                </p:panelGrid>
+
+                                <p:outputPanel styleClass="dataTableActions">
+                                    <p:commandButton value="neu" icon="pi pi-plus"
+                                                     action="#{csvImportController.addTrade(holding)}" process="@this"
+                                                     onsuccess="PF('#{'tradesDT' += loopStatus.index}').addRow();"
+                                                     styleClass="float-right"/>
+                                </p:outputPanel>
+
+                                <p:dataTable widgetVar="#{'tradesDT' += loopStatus.index}" value="#{holding.trades}"
+                                             var="trade" sortBy="#{trade.date}" emptyMessage="Keine Trades vorhanden!"
+                                             styleClass="csvTradesDT" editable="true">
+                                    <p:column>
+                                        <p:commandButton icon="pi pi-trash"
+                                                         actionListener="#{csvImportController.deleteTrade(trade)}"
+                                                         update="@namingcontainer"/>
+                                    </p:column>
+                                    <p:column headerText="Datum">
+                                        <p:cellEditor>
+                                            <f:facet name="output"><h:outputText value="#{trade.date}"/></f:facet>
+                                            <f:facet name="input">
+                                                <p:inputMask value="#{trade.date}" mask="99.99.9999" required="true"
+                                                             converter="#{converterFactory.localDateConverter}"/>
+                                            </f:facet>
+                                        </p:cellEditor>
+                                    </p:column>
+                                    <p:column headerText="Typ">
+                                        <p:cellEditor>
+                                            <f:facet name="output">
+                                                <h:outputText value="#{msg['tradeType.' += trade.type]}"/>
+                                            </f:facet>
+                                            <f:facet name="input">
+                                                <h:selectOneMenu value="#{trade.type}" style="width: 100%">
+                                                    <f:selectItem itemLabel="#{msg['tradeType.' += TradeType.BUY]}"
+                                                                  itemValue="#{TradeType.BUY}"/>
+                                                    <f:selectItem itemLabel="#{msg['tradeType.' += TradeType.SELL]}"
+                                                                  itemValue="#{TradeType.SELL}"/>
+                                                </h:selectOneMenu>
+                                            </f:facet>
+                                        </p:cellEditor>
+                                    </p:column>
+                                    <p:column headerText="Anteile">
+                                        <p:cellEditor>
+                                            <f:facet name="output">
+                                                <h:outputText value="#{trade.quantity}">
+                                                    <f:convertNumber maxFractionDigits="0"/>
+                                                </h:outputText>
+                                            </f:facet>
+                                            <f:facet name="input">
+                                                <p:inputNumber value="#{trade.quantity}" decimalPlaces="0"
+                                                               validator="at.uibk.validator.BigDecimalGreaterZeroValidator"/>
+                                            </f:facet>
+                                        </p:cellEditor>
+                                    </p:column>
+                                    <p:column headerText="Preis">
+                                        <p:cellEditor>
+                                            <f:facet name="output">
+                                                <h:outputText value="#{trade.price}">
+                                                    <o:converter converterId="javax.faces.Number" type="currency"
+                                                                 maxFractionDigits="2"
+                                                                 currencySymbol="#{holding.currency}"/>
+                                                </h:outputText>
+                                            </f:facet>
+                                            <f:facet name="input">
+                                                <p:inputNumber value="#{trade.price}" decimalPlaces="2" validator="at.uibk.validator.BigDecimalGreaterZeroValidator"/>
+                                            </f:facet>
+                                        </p:cellEditor>
+                                    </p:column>
+                                    <p:column headerText="Wechselkurs" rendered="#{not holding.hasPortfolioCurrency()}">
+                                        <p:cellEditor>
+                                            <f:facet name="output">
+                                                <o:outputFormat value="{0} ({1})">
+                                                    <o:param value="#{trade.exchangeRate}">
+                                                        <f:convertNumber maxFractionDigits="4"/>
+                                                    </o:param>
+                                                    <o:param value="#{trade.exchangeRateDirection == ExchangeRateDirection.DEFAULT ?
+                                                portfolioCurrency += '/'+= holding.currency :
+                                                holding.currency += '/' += portfolioCurrency}"/>
+                                                </o:outputFormat>
+                                            </f:facet>
+                                            <f:facet name="input">
+                                                <p:inputNumber value="#{trade.exchangeRate}" decimalPlaces="4"
+                                                               validator="at.uibk.validator.BigDecimalGreaterZeroValidator"
+                                                               style="width: 100%"/>
+                                                <p:selectOneMenu value="#{trade.exchangeRateDirection}"
+                                                                 rendered="#{not holding.hasPortfolioCurrency()}"
+                                                                 style="width: 100%">
+                                                    <f:selectItem itemLabel="#{portfolioCurrency += '/' +=
+                                                holding.currency}" itemValue="#{ExchangeRateDirection.DEFAULT}"/>
+                                                    <f:selectItem itemLabel="#{holding.currency += '/' +=
+                                                portfolioCurrency}" itemValue="#{ExchangeRateDirection.REVERSE}"/>
+                                                </p:selectOneMenu>
+                                            </f:facet>
+                                        </p:cellEditor>
+                                    </p:column>
+                                    <p:column headerText="Gebühren">
+                                        <p:cellEditor>
+                                            <f:facet name="output">
+                                                <h:outputText value="#{trade.brokerage}">
+                                                    <o:converter converterId="javax.faces.Number" type="currency"
+                                                                 maxFractionDigits="2"
+                                                                 currencyCode="#{trade.brokerageCurrency}"/>
+                                                </h:outputText>
+                                            </f:facet>
+                                            <f:facet name="input">
+                                                <p:inputNumber value="#{trade.brokerage}" decimalPlaces="2"
+                                                               validator="at.uibk.validator.BigDecimalNotNegativeValidator"
+                                                               style="width: 100%"/>
+                                                <p:selectOneMenu value="#{trade.brokerageCurrency}" style="width: 100%">
+                                                    <f:selectItems value="#{trade.brokerageCurrencies}"
+                                                                   var="currency" itemValue="#{currency}"
+                                                                   itemLabel="#{currency}"/>
+                                                </p:selectOneMenu>
+                                            </f:facet>
+                                        </p:cellEditor>
+                                    </p:column>
+                                    <p:column>
+                                        <p:rowEditor/>
+                                    </p:column>
+
+                                </p:dataTable>
+                            </div>
+
+                            <!--<p:separator styleClass="sectionSeparator" rendered="#{not loopStatus.last}"/>-->
+                            <div class="csvInstrumentSeparator" jsf:rendered="#{not loopStatus.last}"/>
+
+                        </p:repeat>
+
+                    </p:panel>
+                </p:tab>
+
+                <p:tab id="#{CsvImportController.FINISH_TAB}" title="4. Bestätigung">
+                    <p:panel header="Import erfolgreich abgeschlossen" styleClass="ui-g-12">
+                        <p:messages/>
+
+                        <p:dataTable id="csvImportedTrades" value="#{csvImportController.importedTrades}"
+                                     var="trade" emptyMessage="Keine Positionen vorhanden!"
+                                     sortBy="#{trade.holding.stockIdentifier.toString()}">
+                            <p:column headerText="Wertpapier" groupRow="true">
+                                <h:outputText value="#{trade.holding.stockIdentifier}"/>
+                            </p:column>
+                            <p:column headerText="Datum">
+                                <h:outputText value="#{trade.date}"/>
+                            </p:column>
+                            <p:column headerText="Type">
+                                <h:outputText value="#{msg['tradeType.' += trade.type]}"/>
+                            </p:column>
+                            <p:column headerText="Anzahl">
+                                <h:outputText value="#{trade.quantity}">
+                                    <f:convertNumber maxFractionDigits="0"/>
+                                </h:outputText>
+                            </p:column>
+                            <p:column headerText="Preis">
+                                <h:outputText value="#{trade.price}">
+                                    <o:converter converterId="javax.faces.Number" type="currency"
+                                                 maxFractionDigits="2"
+                                                 currencyCode="#{trade.currency}"/>
+                                </h:outputText>
+                            </p:column>
+                            <p:column headerText="Wechselkurs">
+                                <o:outputFormat value="{0} {1}" rendered="#{not trade.holding.hasPortfolioCurrency()}">
+                                    <o:param value="#{trade.exchangeRate}">
+                                        <f:convertNumber maxFractionDigits="4"/>
+                                    </o:param>
+                                    <o:param value="#{trade.exchangeRateDirectionLabel}"/>
+                                </o:outputFormat>
+                            </p:column>
+                            <p:column headerText="Gebühren">
+                                <h:outputText value="#{trade.brokerage}">
+                                    <o:converter converterId="javax.faces.Number" type="currency" maxFractionDigits="2"
+                                                 currencyCode="#{trade.brokerageCurrency}"/>
+                                </h:outputText>
+                            </p:column>
+                        </p:dataTable>
+
+                    </p:panel>
+                </p:tab>
+            </p:wizard>
+        </h:form>
+    </ui:define>
+</ui:composition>

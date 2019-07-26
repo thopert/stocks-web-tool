@@ -1,0 +1,233 @@
+<ui:composition template="/templates/main/mainTemplate.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:c="http://java.sun.com/jstl/core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:o="http://omnifaces.org/ui"
+>
+    <ui:define name="content">
+        <c:set value="#{holdingsManagementController.currentPortfolioEager.currency}" var="portfolioCurrency"/>
+
+        <h:form prependId="false">
+            <o:outputFormat id="heading" value="{0} | {1}" styleClass="h1">
+                <o:param value="#{holdingsManagementController.currentPortfolioEager.name}"/>
+                <o:param value="#{holdingsManagementController.portfolioPerformance.currentValue}">
+                    <f:convertNumber type="currency" maxFractionDigits="2" currencySymbol="#{portfolioCurrency.symbol}"/>
+                </o:param>
+            </o:outputFormat>
+
+            <div class="pageSettings">
+                <p:selectBooleanCheckbox value="#{holdingsManagementController.withClosed}"
+                                         itemLabel="Mit geschlossenen Positionen"
+                                         styleClass="float-right">
+                    <p:ajax update="@form"/>
+                </p:selectBooleanCheckbox>
+            </div>
+
+
+            <h:outputText value="Performance" styleClass="h2"/>
+            <c:set value="#{holdingsManagementController.portfolioPerformance.hasProfit()}" var="hasProfit"/>
+            <p:panelGrid id="performanceSummaryPG" columns="9"
+                         styleClass="ui-panelgrid-performance-summary">
+                <h:outputText value="Aktueller Wert"/>
+                <h:outputText/>
+                <h:outputText value="Verkäufe"/>
+                <h:outputText/>
+                <h:outputText value="Dividenden"/>
+                <h:outputText/>
+                <h:outputText value="Ausgaben"/>
+                <h:outputText/>
+                <h:outputText value="Rendite"/>
+
+                <h:outputText value="#{holdingsManagementController.portfolioPerformance.currentValue}">
+                    <f:convertNumber maxFractionDigits="2" type="currency" currencySymbol="#{portfolioCurrency.symbol}"/>
+                </h:outputText>
+                <h:outputText value="+"/>
+                <h:outputText value="#{holdingsManagementController.portfolioPerformance.totalSales}">
+                    <f:convertNumber maxFractionDigits="2" type="currency" currencySymbol="#{portfolioCurrency.symbol}"/>
+                </h:outputText>
+                <h:outputText value="+"/>
+                <h:outputText value="#{holdingsManagementController.portfolioPerformance.totalDividends}">
+                    <f:convertNumber maxFractionDigits="2" type="currency" currencySymbol="#{portfolioCurrency.symbol}"/>
+                </h:outputText>
+                <h:outputText value="-"/>
+                <h:outputText value="#{holdingsManagementController.portfolioPerformance.totalCosts}">
+                    <f:convertNumber maxFractionDigits="2" type="currency" currencySymbol="#{portfolioCurrency.symbol}"/>
+                </h:outputText>
+                <h:outputText value="="/>
+                <p:outputPanel layout="inline">
+                    <h:outputText value="#{holdingsManagementController.portfolioPerformance.totalReturn}"
+                                  style="#{hasProfit ? 'color: #16A967;' : 'color: #EA2548;'}">
+                        <f:convertNumber maxFractionDigits="2" type="currency" currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                    <h:outputText value=" | "/>
+                    <h:outputText value="#{holdingsManagementController.portfolioPerformance.totalPercentReturn}"
+                                  style="#{hasProfit ? 'color: #16A967;' : 'color: #EA2548;'}">
+                        <f:convertNumber maxFractionDigits="4" type="percent"/>
+                    </h:outputText>
+                </p:outputPanel>
+            </p:panelGrid>
+
+            <h:outputText value="Historie" styleClass="h2"/>
+
+            <p:panelGrid id="chartOptions" columns="4" styleClass="chartToolbar">
+                <p:commandLink id="dateRangeCL" action="#{holdingsManagementController.createChartDateRange()}"
+                               process="@this" update="dateRangeOP" oncomplete="PF('dateRangeDLG').show()">
+                    <o:outputFormat value="{0} - {1}"
+                                    rendered="#{not empty holdingsManagementController.lineChart.startDate}">
+                        <o:param value="#{holdingsManagementController.lineChart.startDate}"/>
+                        <o:param value="#{holdingsManagementController.lineChart.endDate}"/>
+                    </o:outputFormat>
+                    <h:outputText value="Datumsbereich"
+                                  rendered="#{empty holdingsManagementController.lineChart.startDate}"/>
+                </p:commandLink>
+
+                <p:selectOneMenu value="#{holdingsManagementController.lineChart.monthsBack}">
+                    <f:selectItems value="#{holdingsManagementController.lineChart.timeRanges}"
+                                   var="timeRange" itemValue="#{timeRange.monthsBack}"
+                                   itemLabel="#{msg['chartTimeRange.' += timeRange]}"/>
+                    <p:ajax event="itemSelect" update="lineChart dateRangeCL"
+                            listener="#{holdingsManagementController.updateLineChartModel()}"/>
+                </p:selectOneMenu>
+
+                <p:selectOneMenu id="valueTypeSOM" value="#{holdingsManagementController.lineChart.valueType}">
+                    <f:selectItems value="#{holdingsManagementController.lineChart.valueTypes}" var="valueType"
+                                   itemLabel="#{msg['chartValueType.' += valueType]} (#{portfolioCurrency})"
+                                   itemValue="#{valueType}"/>
+                    <p:ajax event="itemSelect" update="lineChart percentSBB"
+                            listener="#{holdingsManagementController.updateLineChartModel()}"/>
+                </p:selectOneMenu>
+
+                <p:selectBooleanButton id="percentSBB"
+                                       value="#{holdingsManagementController.lineChart.percentMode}"
+                                       onLabel="%" offLabel="%"
+                                       disabled="#{not holdingsManagementController.lineChart.percentModeAllowed}">
+                    <p:ajax update="lineChart valueTypeSOM"
+                            listener="#{holdingsManagementController.updateLineChartModel()}"/>
+                </p:selectBooleanButton>
+
+
+            </p:panelGrid>
+
+            <p:lineChart id="lineChart" model="#{holdingsManagementController.lineChartModel}"
+                         style="width: 100%; height: 40vh; margin-top: 1em"/>
+
+
+            <h:outputText value="Positionen" styleClass="h2"/>
+
+            <p:dataTable value="#{holdingsManagementController.portfolioPerformance.holdingPerformances}" var="hs"
+                         sortBy="#{hs.holding.name}" rowKey="#{hs.holding.id}"
+                         emptyMessage="Keine Positionen vorhanden!"
+                         styleClass="performanceOverview">
+                <p:column headerText="Position">
+                    <p:commandLink value="#{hs.holding.stockIdentifier}"
+                                   process="@this"
+                                   action="#{holdingsManagementController.initHoldingDetails(hs.holding)}"/>
+                </p:column>
+                <p:column headerText="Anteile">
+                    <h:outputText value="#{hs.numberOfShares}">
+                            <f:convertNumber maxFractionDigits="0"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Preis">
+                    <h:outputText value="#{hs.price}">
+                        <o:converter converterId="javax.faces.Number" type="currency" maxFractionDigits="2"
+                                     currencySymbol="#{hs.holding.currency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Aktueller Wert">
+                    <h:outputText value="#{hs.currentValue}">
+                        <f:convertNumber type="currency" maxFractionDigits="2"
+                                         currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Verkäufe">
+                    <h:outputText value="#{hs.totalSales}">
+                        <f:convertNumber type="currency" maxFractionDigits="2"
+                                         currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Dividenden">
+                    <h:outputText value="#{hs.totalDividends}">
+                        <f:convertNumber type="currency" maxFractionDigits="2"
+                                         currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Rendite" sortBy="#{hs.totalReturn}">
+                    <o:outputFormat value="{0} ({1})">
+                        <o:param value="#{hs.totalReturn}">
+                            <f:convertNumber type="currency" maxFractionDigits="2"
+                                             currencySymbol="#{portfolioCurrency.symbol}"/>
+                        </o:param>
+                        <o:param value="#{hs.totalPercentReturn}">
+                            <f:convertNumber type="percent" maxFractionDigits="2"/>
+                        </o:param>
+                    </o:outputFormat>
+                </p:column>
+            </p:dataTable>
+
+            <p:outputPanel id="dateRangeOP">
+                <p:dialog id="dateRangeDLG" widgetVar="dateRangeDLG" header="Datumsbereich angeben" modal="true">
+                    <p:messages id="dateRangeMSGS"/>
+                    <p:panelGrid columns="2" styleClass="chartDateRange">
+                        <p:outputLabel value="Von:" for="startDate"/>
+                        <p:calendar id="startDate" value="#{holdingsManagementController.chartDateRange.startDate}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                    converter="#{converterFactory.localDateConverter}">
+                        </p:calendar>
+
+                        <p:outputLabel value="Bis:" for="endDate"/>
+                        <p:calendar id="endDate" value="#{holdingsManagementController.chartDateRange.endDate}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                    converter="#{converterFactory.localDateConverter}">
+                        </p:calendar>
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('dateRangeDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="ok" action="#{holdingsManagementController.applyChartDateRange()}"
+                                         process="dateRangeDLG" update="lineChart dateRangeMSGS dateRangeCL"
+                                         icon="pi pi-check"/>
+                    </p:panelGrid>
+
+                </p:dialog>
+            </p:outputPanel>
+
+        </h:form>
+
+    </ui:define>
+</ui:composition>
+
+<!--<p:column headerText="Einnahmen">-->
+<!--<h:outputText value="#{hs.totalEarnings}">-->
+<!--<f:convertNumber type="currency" maxFractionDigits="2"-->
+<!--currencySymbol="#{portfolioCurrency.symbol}"/>-->
+<!--</h:outputText>-->
+<!--</p:column>-->
+<!--<p:column headerText="Ausgaben">-->
+<!--<h:outputText value="#{hs.totalCosts}">-->
+<!--<f:convertNumber type="currency" maxFractionDigits="2"-->
+<!--currencySymbol="#{portfolioCurrency.symbol}"/>-->
+<!--</h:outputText>-->
+<!--</p:column>-->
+
+<!--<p:columnGroup type="footer">-->
+<!--<p:column colspan="3" style="text-align: right" footerText="Gesamt:"/>-->
+<!--<p:column-->
+<!--footerText="#{of:formatNumber(holdingsManagementController.portfolioPerformance.currentValue, '###,##0.00')} #{portfolioCurrency.symbol}"/>-->
+<!--<p:column-->
+<!--footerText="#{of:formatNumber(holdingsManagementController.portfolioPerformance.totalDividends, '###,##0.00')} #{portfolioCurrency.symbol}"/>-->
+<!--<p:column-->
+<!--footerText="#{of:formatNumber(holdingsManagementController.portfolioPerformance.totalSales, '###,##0.00')} #{portfolioCurrency.symbol}"/>-->
+<!--&lt;!&ndash;<p:column&ndash;&gt;-->
+<!--&lt;!&ndash;footerText="#{of:formatNumber(holdingsManagementController.portfolioPerformance.totalEarnings, '###,##0.00')} #{portfolioCurrency.symbol}"/>&ndash;&gt;-->
+<!--&lt;!&ndash;<p:column&ndash;&gt;-->
+<!--&lt;!&ndash;footerText="#{of:formatNumber(holdingsManagementController.portfolioPerformance.totalCosts, '###,##0.00')} #{portfolioCurrency.symbol}"/>&ndash;&gt;-->
+<!--<p:column-->
+<!--footerText="#{of:formatNumber(holdingsManagementController.portfolioPerformance.totalReturn,'###,##0.00')} #{portfolioCurrency.symbol}-->
+<!--(#{of:formatNumber(holdingsManagementController.portfolioPerformance.totalPercentReturnConverted,'###,##0.00')}%)"/>-->
+<!--</p:columnGroup>-->

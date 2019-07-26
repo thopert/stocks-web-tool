@@ -1,0 +1,207 @@
+<ui:composition template="/templates/main/mainTemplate.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:o="http://omnifaces.org/ui">
+    <ui:define name="content">
+        <h:form prependId="false">
+
+            <h:outputText value="Gesamtüberblick" styleClass="h1"/>
+
+            <div class="pageSettings">
+                <p:selectBooleanCheckbox value="#{portfolioComparisonController.withClosed}"
+                                         itemLabel="Mit geschlossenen Positionen"
+                                         styleClass="small-font float-right">
+                    <p:ajax update="@form"/>
+                </p:selectBooleanCheckbox>
+            </div>
+
+            <h:outputText value="Performance" styleClass="h2"/>
+
+            <p:dataTable id="portfolioPerformanceDT" value="#{portfolioComparisonController.portfolioPerformances}"
+                         var="portfolioPerformance" sortBy="#{portfolioPerformance.portfolio.name}"
+                         emptyMessage="Keine Portfolios vorhanden!" styleClass="performanceOverview">
+                <p:column headerText="Portfolio">
+                    <p:commandLink value="#{portfolioPerformance.portfolio.name}" process="@this"
+                                   action="#{portfolioComparisonController.inspectPortfolio(portfolioPerformance.portfolio)}"/>
+                </p:column>
+                <p:column headerText="Aktueller Wert">
+                    <h:outputText value="#{portfolioPerformance.currentValue}">
+                        <o:converter converterId="javax.faces.Number" type="currency" maxFractionDigits="2"
+                                     currencySymbol="#{portfolioPerformance.portfolio.currency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Verkäufe">
+                    <h:outputText value="#{portfolioPerformance.totalSales}">
+                        <o:converter converterId="javax.faces.Number" type="currency" maxFractionDigits="2"
+                                     currencySymbol="#{portfolioPerformance.portfolio.currency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Dividenden">
+                    <h:outputText value="#{portfolioPerformance.totalDividends}">
+                        <o:converter converterId="javax.faces.Number" type="currency" maxFractionDigits="2"
+                                     currencySymbol="#{portfolioPerformance.portfolio.currency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Einnahmen">
+                    <h:outputText value="#{portfolioPerformance.totalEarnings}">
+                        <o:converter converterId="javax.faces.Number" type="currency" maxFractionDigits="2"
+                                     currencySymbol="#{portfolioPerformance.portfolio.currency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Ausgaben">
+                    <h:outputText value="#{portfolioPerformance.totalCosts}">
+                        <o:converter converterId="javax.faces.Number" type="currency" maxFractionDigits="2"
+                                     currencySymbol="#{portfolioPerformance.portfolio.currency.symbol}"/>
+                    </h:outputText>
+                </p:column>
+                <p:column headerText="Rendite" sortBy="#{portfolioPerformance.totalPercentReturn}">
+                    <o:outputFormat value="{0} ({1})">
+                        <o:param value="#{portfolioPerformance.totalReturn}">
+                            <o:converter converterId="javax.faces.Number" type="currency" maxFractionDigits="2"
+                                         currencySymbol="#{portfolioPerformance.portfolio.currency.symbol}"/>
+                        </o:param>
+                        <o:param value="#{portfolioPerformance.totalPercentReturn}"
+                                 converter="at.uibk.converter.PercentConverter"/>
+
+                    </o:outputFormat>
+                </p:column>
+            </p:dataTable>
+
+
+            <h:outputText value="Historie" styleClass="h2"/>
+
+            <p:panelGrid id="chartOptions" columns="5" styleClass="chartToolbar">
+                <p:commandLink id="dateRangeCL" action="#{portfolioComparisonController.createChartDateRange()}"
+                               process="@this" update="dateRangeOP" oncomplete="PF('dateRangeDLG').show()">
+                    <o:outputFormat value="{0} - {1}"
+                                    rendered="#{not empty portfolioComparisonController.lineChart.startDate}">
+                        <o:param value="#{portfolioComparisonController.lineChart.startDate}"/>
+                        <o:param value="#{portfolioComparisonController.lineChart.endDate}"/>
+                    </o:outputFormat>
+                    <h:outputText value="Datumsbereich"
+                                  rendered="#{empty portfolioComparisonController.lineChart.startDate}"/>
+                </p:commandLink>
+
+                <p:selectOneMenu value="#{portfolioComparisonController.lineChart.monthsBack}"
+                                 styleClass="ui-selectonemenu-centered">
+                    <f:selectItems value="#{portfolioComparisonController.lineChart.timeRanges}"
+                                   var="timeRange" itemValue="#{timeRange.monthsBack}"
+                                   itemLabel="#{msg['chartTimeRange.' += timeRange]}"/>
+                    <p:ajax event="itemSelect" update="lineChart dateRangeCL"
+                            listener="#{portfolioComparisonController.updateLineChartModel()}"/>
+                </p:selectOneMenu>
+
+                <p:selectOneMenu id="valueTypeSOM" value="#{portfolioComparisonController.lineChart.valueType}">
+                    <f:selectItems value="#{portfolioComparisonController.lineChart.valueTypes}" var="valueType"
+                                   itemLabel="#{msg['chartValueType.' += valueType]}" itemValue="#{valueType}"/>
+                    <p:ajax event="itemSelect" update="lineChart percentSBB"
+                            listener="#{portfolioComparisonController.updateLineChartModel()}"/>
+                </p:selectOneMenu>
+
+                <p:selectBooleanButton id="percentSBB"
+                                       value="#{portfolioComparisonController.lineChart.percentMode}"
+                                       onLabel="%" offLabel="%"
+                                       disabled="#{not portfolioComparisonController.lineChart.percentModeAllowed}">
+                    <p:ajax update="lineChart valueTypeSOM"
+                            listener="#{portfolioComparisonController.updateLineChartModel()}"/>
+                </p:selectBooleanButton>
+
+                <p:commandButton process="@this" update="settingsDLG" oncomplete="PF('settingsDLG').show()"
+                                 icon="pi pi-bars"/>
+            </p:panelGrid>
+
+            <p:lineChart id="lineChart" model="#{portfolioComparisonController.lineChartModel}"
+                         style="height: 50vh; width: 100%"/>
+
+            <p:outputPanel id="legendOP">
+                <p:panelGrid styleClass="chartLegend"
+                             rendered="#{not empty portfolioComparisonController.lineChart.chartEntries}">
+                    <p:row>
+                        <ui:repeat value="#{portfolioComparisonController.lineChart.chartEntries}"
+                                   var="chartEntry">
+                            <p:column>
+                                <p:outputPanel style="border-color:#{chartEntry.hexColor}">
+                                    <span style="#{not chartEntry.visible ? 'text-decoration: line-through' : ''}">
+                                        #{chartEntry.id}</span>
+                                </p:outputPanel>
+                            </p:column>
+                        </ui:repeat>
+                    </p:row>
+                </p:panelGrid>
+            </p:outputPanel>
+
+            <p:dialog id="settingsDLG" widgetVar="settingsDLG" header="Chart Einstellungen" modal="true">
+                <p:messages id="settingsMSGS"/>
+                <p:panelGrid id="settingsPG" styleClass="ui-panelgrid-chartsettings">
+                    <p:row>
+                        <p:column>Symbol</p:column>
+                        <p:column>Sichtbar</p:column>
+                        <p:column>Farbe</p:column>
+                        <p:column>Referenzlinie</p:column>
+                    </p:row>
+                    <p:repeat value="#{portfolioComparisonController.lineChart.chartEntries}"
+                              var="chartEntry">
+                        <p:row>
+                            <p:column>
+                                <h:outputText value="#{chartEntry.id}"/>
+                            </p:column>
+                            <p:column>
+                                <p:selectBooleanCheckbox value="#{chartEntry.visible}"/>
+                            </p:column>
+                            <p:column>
+                                <p:colorPicker value="#{chartEntry.color}" mode="popup"/>
+                            </p:column>
+                            <p:column>
+                                <p:selectBooleanCheckbox value="#{chartEntry.withPriceLine}"/>
+                            </p:column>
+                        </p:row>
+                    </p:repeat>
+                </p:panelGrid>
+
+                <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                    <p:button onclick="PF('settingsDLG').hide(); return false;"
+                              value="abbrechen" icon="pi pi-times" styleClass="ui-button-cancel"/>
+
+                    <p:commandButton process="@this settingsPG" update="lineChart legendOP dateRangeCL settingsMSGS"
+                                     action="#{portfolioComparisonController.updateLineChartModel()}"
+                                     oncomplete="hideDialogOnSuccess(args, 'settingsDLG')"
+                                     value="ok" icon="pi pi-check"/>
+                </p:panelGrid>
+
+            </p:dialog>
+
+            <p:outputPanel id="dateRangeOP">
+                <p:dialog id="dateRangeDLG" widgetVar="dateRangeDLG" header="Datumsbereich angeben" modal="true">
+                    <p:messages id="dateRangeMSGS"/>
+                    <p:panelGrid columns="2" styleClass="chartDateRange">
+                        <p:outputLabel value="Von:" for="startDate"/>
+                        <p:calendar id="startDate" value="#{portfolioComparisonController.chartDateRange.startDate}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                    converter="#{converterFactory.localDateConverter}">
+                        </p:calendar>
+
+                        <p:outputLabel value="Bis:" for="endDate"/>
+                        <p:calendar id="endDate" value="#{portfolioComparisonController.chartDateRange.endDate}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                    converter="#{converterFactory.localDateConverter}">
+                        </p:calendar>
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('dateRangeDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="ok" action="#{portfolioComparisonController.applyChartDateRange()}"
+                                         process="dateRangeDLG" update="lineChart dateRangeMSGS chartOptions"
+                                         icon="pi pi-check"/>
+                    </p:panelGrid>
+
+                </p:dialog>
+            </p:outputPanel>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

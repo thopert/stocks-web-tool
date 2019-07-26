@@ -1,0 +1,104 @@
+<ui:composition template="/templates/main/mainTemplate.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:p="http://primefaces.org/ui"
+>
+    <ui:define name="content">
+        <h:form prependId="false">
+            <p:growl id="growl" life="5000"/>
+
+            <h:outputText value="Verwaltung" styleClass="h1"/>
+
+            <h:outputText value="Meine Portfolios" styleClass="h2"/>
+
+            <div class="dataTableActions">
+                <p:commandButton value="Portfolio" action="#{portfoliosManagementController.createPlaceHolder()}"
+                                 process="@this" update="portfolioOP" oncomplete="PF('portfolioDLG').show()"
+                                 icon="pi pi-plus" styleClass="float-right"/>
+            </div>
+
+            <p:dataTable id="portfolioDT" value="#{portfoliosManagementController.portfolios}" var="portfolio"
+                         selectionMode="single" selection="#{portfoliosManagementController.selectedPortfolio}"
+                         rowKey="#{portfolio.id}" styleClass="ui-datatable-menucolumn">
+                <p:column headerText="Name">
+                    <h:outputText value="#{portfolio.name}"/>
+                </p:column>
+                <p:column headerText="Währung">
+                    <h:outputText value="#{portfolio.currency}"/>
+                </p:column>
+                <p:column headerText="Positionen">
+                    <h:outputText value="#{portfolio.numberOfHoldings}"/>
+                </p:column>
+                <p:column>
+                    <p:menuButton icon="pi pi-bars">
+                        <p:menuitem action="#{portfoliosManagementController.setPlaceHolder(portfolio)}"
+                                    process="@this" update="portfolioOP" oncomplete="PF('portfolioDLG').show()"
+                                    value="editieren" icon="pi pi-pencil"/>
+                        <p:separator/>
+                        <p:menuitem action="#{portfoliosManagementController.removePortfolio(portfolio)}"
+                                    process="@this" update="portfolioDT growl exportPG" value="löschen"
+                                    icon="pi pi-trash"/>
+                    </p:menuButton>
+                </p:column>
+                <p:ajax event="rowSelect" listener="#{portfoliosManagementController.onSelectRadio}"
+                        update="portfolioSelectionValue"/>
+            </p:dataTable>
+
+            <p:outputPanel id="portfolioOP">
+                <p:dialog id="portfolioDLG" widgetVar="portfolioDLG"
+                          rendered="#{not empty portfoliosManagementController.placeHolder}"
+                          header="#{portfoliosManagementController.editMode ?
+                          portfoliosManagementController.placeHolder.name += ' editieren' : 'Neues Portfolio erstellen'}"
+                          modal="true">
+
+                    <p:messages id="portfolioDialogMSGS"/>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogContent">
+                        <p:outputLabel for="name" value="Name:"/>
+                        <p:inputText id="name" value="#{portfoliosManagementController.placeHolder.name}" size="35"
+                        maxlength="35"/>
+
+                        <h:outputText value="Währung:"/>
+                        <h:outputText value="#{portfoliosManagementController.placeHolder.currency}"
+                                      rendered="#{portfoliosManagementController.editMode}"/>
+                        <p:selectOneMenu value="#{portfoliosManagementController.placeHolder.currency}"
+                                         rendered="#{not portfoliosManagementController.editMode}">
+                            <f:selectItems value="#{portfoliosManagementController.selectableCurrencies}"
+                                           var="currcency"
+                                           itemValue="#{currency}" itemLabel="#{currency}"/>
+                        </p:selectOneMenu>
+
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('portfolioDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+                        <p:commandButton icon="pi pi-check" value="ok"
+                                         action="#{portfoliosManagementController.completeDialog}"
+                                         process="portfolioDLG" update="portfolioDialogMSGS"
+                                         oncomplete="hideDialogOnSuccess(args, 'portfolioDLG')"/>
+                    </p:panelGrid>
+
+
+                    <p:ajax event="close" listener="#{portfoliosManagementController.cleanUp()}"
+                            update="portfolioDT portfolioOP portfolioSOM portfolioSelectionValue"/>
+                </p:dialog>
+            </p:outputPanel>
+
+            <h:outputText value="Exporter" styleClass="h2"/>
+            <p:panelGrid id="exportPG" columns="2" styleClass="ui-panelgrid-exporter">
+                <p:selectOneMenu id="portfolioSOM" value="#{portfoliosManagementController.exportId}">
+                    <f:selectItem itemValue="#{null}" itemLabel="Bitte auswählen"/>
+                    <f:selectItems value="#{portfoliosManagementController.portfolios}" var="portfolio"
+                                   itemValue="#{portfolio.id}" itemLabel="#{portfolio.name}"/>
+                </p:selectOneMenu>
+                <p:commandButton ajax="false" value="exportieren" icon="pi pi-download">
+                    <p:fileDownload value="#{portfoliosManagementController.exportPortfolio()}"/>
+                </p:commandButton>
+            </p:panelGrid>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

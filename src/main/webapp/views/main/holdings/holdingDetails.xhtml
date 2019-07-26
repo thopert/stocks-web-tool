@@ -1,0 +1,766 @@
+<ui:composition template="/templates/main/mainTemplate.xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:c="http://java.sun.com/jstl/core"
+                xmlns:jsf="http://xmlns.jcp.org/jsf"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:o="http://omnifaces.org/ui">
+    <ui:define name="content">
+        <p:importEnum type="at.uibk.model.mainEntities.TradeType"/>
+
+        <p:importEnum type="at.uibk.model.mainEntities.ExchangeRateDirection"/>
+
+        <c:set var="portfolioCurrency" value="#{holdingDetailsController.selectedHolding.portfolio.currency}"
+               scope="view"/>
+        <c:set var="holdingCurrency" value="#{holdingDetailsController.selectedHolding.currency}"
+               scope="view"/>
+        <c:set var="hasPortfolioCurrency" value="#{holdingDetailsController.selectedHolding.hasPortfolioCurrency()}"
+               scope="view"/>
+        <c:set var="defaultExchangeRateLabel" value="#{portfolioCurrency += '/' += holdingCurrency}" scope="view"/>
+        <c:set var="reverseExchangeRateLabel" value="#{holdingCurrency += '/' += portfolioCurrency}" scope="view"/>
+
+        <h:form prependId="false">
+            <p:growl id="growl" life="3000"/>
+
+            <p:link value="zurück" outcome="#{Pages.holdingsManagement}" styleClass="float-right"/>
+
+            <div class="h1">
+                <div>
+                    #{holdingDetailsController.selectedHolding.name} | #{holdingDetailsController.selectedHolding.stockIdentifier}
+                </div>
+                <div id="holdingHeadingStatus">
+                    <h:outputText value="#{holdingDetailsController.holdingPerformance.price}">
+                        <f:convertNumber type="currency" maxFractionDigits="2" currencySymbol="#{holdingCurrency.symbol}"/>
+                    </h:outputText>
+                </div>
+            </div>
+
+            <div class="pageSettings">
+                <p:commandButton process="@this" action="#{holdingDetailsController.removeHolding}"
+                                 value="Position löschen" styleClass="float-right ui-button-delete"/>
+            </div>
+
+            <h:outputText id="performanceHeading" value="Performance" styleClass="h2"/>
+            <o:outputFormat id="calculationDetails"
+                            value="#{hasPortfolioCurrency ? '' : 'Wechselkurs: {0}/{1} = {2}'}">
+                <o:param value="#{portfolioCurrency}"/>
+                <o:param value="#{holdingCurrency}"/>
+                <o:param value="#{holdingDetailsController.holdingPerformance.exchangeRate}"
+                         converter="at.uibk.converter.ExchangeRateConverter"/>
+            </o:outputFormat>
+            <!--   <o:outputFormat id="calculationDetails"
+                               value="Preis: {0} {1}#{hasPortfolioCurrency ? '' : ', Wechselkurs: {2}/{3} = {4}'}">
+                   <o:param value="#{holdingDetailsController.holdingPerformance.price}"
+                            converter="at.uibk.converter.PriceConverter"/>
+                   <o:param value="#{holdingCurrency}"/>
+                   <o:param value="#{portfolioCurrency}"/>
+                   <o:param value="#{holdingCurrency}"/>
+                   <o:param value="#{holdingDetailsController.holdingPerformance.exchangeRate}"
+                            converter="at.uibk.converter.ExchangeRateConverter"/>
+               </o:outputFormat>-->
+
+            <p:outputPanel id="performanceOP">
+
+                <p:panelGrid id="holdingPerfromancePG" columns="9"
+                             styleClass="ui-panelgrid-performance-summary">
+
+                    <h:outputText value="Aktueller Wert"/>
+                    <h:outputText/>
+                    <h:outputText value="Verkäufe"/>
+                    <h:outputText/>
+                    <h:outputText value="Dividenden"/>
+                    <h:outputText/>
+                    <h:outputText value="Ausgaben"/>
+                    <h:outputText/>
+                    <h:outputText value="Rendite"/>
+
+                    <h:outputText value="#{holdingDetailsController.holdingPerformance.currentValue}">
+                        <f:convertNumber maxFractionDigits="2" type="currency" currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                    <h:outputText value="+"/>
+                    <h:outputText value="#{holdingDetailsController.holdingPerformance.totalSales}">
+                        <f:convertNumber maxFractionDigits="2" type="currency" currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                    <h:outputText value="+"/>
+                    <h:outputText value="#{holdingDetailsController.holdingPerformance.totalDividends}">
+                        <f:convertNumber maxFractionDigits="2" type="currency" currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                    <h:outputText value="-"/>
+                    <h:outputText value="#{holdingDetailsController.holdingPerformance.totalCosts}">
+                        <f:convertNumber maxFractionDigits="2" type="currency" currencySymbol="#{portfolioCurrency.symbol}"/>
+                    </h:outputText>
+                    <h:outputText value="="/>
+                    <p:outputPanel>
+                        <h:outputText value="#{holdingDetailsController.holdingPerformance.totalReturn}"
+                                      style="#{holdingDetailsController.holdingPerformance.totalReturn ge 0 ? 'color: #16A967;' : 'color: #EA2548;'}">
+                            <f:convertNumber maxFractionDigits="2" type="currency"
+                                             currencySymbol="#{portfolioCurrency.symbol}"/>
+                        </h:outputText>
+                        <h:outputText value=" | "/>
+                        <h:outputText value="#{holdingDetailsController.holdingPerformance.totalPercentReturn}"
+                                      style="#{holdingDetailsController.holdingPerformance.totalReturn ge 0 ? 'color: #16A967;' : 'color: #EA2548;'}">
+                            <f:convertNumber maxFractionDigits="2" type="percent"/>
+                        </h:outputText>
+                    </p:outputPanel>
+                </p:panelGrid>
+            </p:outputPanel>
+
+            <h:outputText value="Historie" styleClass="h2"/>
+            <p:panelGrid id="chartOptions" columns="5" styleClass="chartToolbar">
+                <p:commandLink id="dateRangeCL" action="#{holdingDetailsController.createChartDateRange()}"
+                               process="@this" update="dateRangeOP" oncomplete="PF('dateRangeDLG').show()">
+                    <o:outputFormat value="{0} - {1}"
+                                    rendered="#{not empty holdingDetailsController.lineChart.startDate}">
+                        <o:param value="#{holdingDetailsController.lineChart.startDate}"/>
+                        <o:param value="#{holdingDetailsController.lineChart.endDate}"/>
+                    </o:outputFormat>
+                    <h:outputText value="Datumsbereich"
+                                  rendered="#{empty holdingDetailsController.lineChart.startDate}"/>
+                </p:commandLink>
+
+                <p:selectOneMenu value="#{holdingDetailsController.lineChart.monthsBack}">
+                    <f:selectItems value="#{holdingDetailsController.lineChart.timeRanges}"
+                                   var="timeRange" itemValue="#{timeRange.monthsBack}"
+                                   itemLabel="#{msg['chartTimeRange.' += timeRange]}"/>
+                    <p:ajax event="itemSelect" update="lineChart dateRangeCL"
+                            listener="#{holdingDetailsController.updateLineChartModel()}"/>
+                </p:selectOneMenu>
+
+                <p:selectOneMenu id="valueTypeSOM" value="#{holdingDetailsController.lineChart.valueType}">
+                    <f:selectItems value="#{holdingDetailsController.lineChart.valueTypes}" var="valueType"
+                                   itemLabel="#{msg['chartValueType.' += valueType]} (#{valueType eq 'price' ?
+                                   holdingCurrency : portfolioCurrency})"
+                                   itemValue="#{valueType}"/>
+                    <p:ajax event="itemSelect" update="lineChart percentSBB"
+                            listener="#{holdingDetailsController.updateLineChartModel()}"/>
+                </p:selectOneMenu>
+
+                <p:selectBooleanButton id="percentSBB"
+                                       value="#{holdingDetailsController.lineChart.percentMode}"
+                                       onLabel="%" offLabel="%"
+                                       disabled="#{not holdingDetailsController.lineChart.percentModeAllowed}">
+                    <p:ajax update="lineChart valueTypeSOM"
+                            listener="#{holdingDetailsController.updateLineChartModel()}"/>
+                </p:selectBooleanButton>
+
+
+                <p:commandButton action="#{holdingDetailsController.initChart()}"
+                                 process="@this" update="lineChart chartOptions"
+                                 icon="pi pi-refresh" value="Chart"/>
+            </p:panelGrid>
+
+            <p:lineChart id="lineChart" model="#{holdingDetailsController.lineChartModel}"
+                         style="width: 100%; height: 40vh"/>
+
+            <h:outputText value="Aktivitäten &amp; Ereignisse" styleClass="h2"/>
+
+            <p:outputPanel id="tradeActionsOP" styleClass="dataTableActions">
+
+                <p:menuButton value="Hinzufügen" styleClass="float-right">
+                    <p:menuitem value="Kauf/Verkauf"
+                                action="#{holdingDetailsController.createTradePlaceHolder(TradeType.BUY)}"
+                                process="@this" update="tradeOP" oncomplete="PF('tradeDLG').show()"/>
+                    <p:separator/>
+                    <p:menuitem value="Split/Konsolidierung"
+                                action="#{holdingDetailsController.createTradePlaceHolder(TradeType.SPLIT)}"
+                                process="@this" update="adjustmentOP" oncomplete="PF('adjustmentDLG').show()"/>
+                </p:menuButton>
+
+                <p:commandButton value="Ereignisse laden"
+                                 action="#{holdingDetailsController.setupMissingAdjustments()}"
+                                 process="@this" update="missingAdjustmentOP"
+                                 oncomplete="PF('missingAdjustmentDLG').show()"
+                                 rendered="#{holdingDetailsController.hasMissingAdjustments()}"
+                                 icon="pi pi-refresh" styleClass="float-right"/>
+            </p:outputPanel>
+
+            <p:dataTable id="tradeDT" value="#{holdingDetailsController.trades}" var="trade" sortBy="#{trade.date}"
+                         styleClass="ui-datatable-menucolumn">
+
+                <p:column headerText="Datum">
+                    <h:outputText value="#{trade.date}"/>
+                </p:column>
+
+                <p:column headerText="Typ">
+                    <h:outputText value="#{msg['tradeType.' += trade.type]}"/>
+                </p:column>
+
+                <p:column headerText="Anzahl">
+                    <h:outputText value="#{trade.quantity}"
+                                  style="#{trade.reduction ? 'color: red;' : 'color:inherit;'}">
+                        <f:convertNumber type="number" maxFractionDigits="2"/>
+                    </h:outputText>
+                </p:column>
+
+                <p:column headerText="Preis (#{holdingCurrency})">
+                    <h:outputText value="#{trade.price}" rendered="#{!trade.isAdjustment()}"
+                                  converter="at.uibk.converter.PriceConverter"/>
+                </p:column>
+
+                <p:column headerText="Wechselkurs (#{defaultExchangeRateLabel})"
+                          rendered="#{not hasPortfolioCurrency}">
+                    <h:outputText value="#{trade.getDefaultExchangeRate()}" rendered="#{not trade.isAdjustment()}"
+                                  converter="at.uibk.converter.ExchangeRateConverter">
+                    </h:outputText>
+                </p:column>
+
+                <p:column headerText="Wert (#{portfolioCurrency})">
+                    <h:outputText value="#{trade.worthInPortfolioCurrency}" rendered="#{not trade.isAdjustment()}"
+                                  converter="at.uibk.converter.PriceConverter"/>
+                </p:column>
+
+                <p:column headerText="Gebühren (#{portfolioCurrency})">
+                    <h:outputText value="#{trade.brokerageInPortfolioCurrency}" rendered="#{not trade.isAdjustment()}"
+                                  converter="at.uibk.converter.PriceConverter"/>
+                </p:column>
+
+                <!--<p:column headerText="Währung (Gebühren)">-->
+                <!--<h:outputText value="#{t.brokerageCurrency}" rendered="#{not t.isAdjustment()}"/>-->
+                <!--</p:column>-->
+
+                <p:column>
+                    <p:menuButton icon="pi pi-bars">
+                        <p:menuitem action="#{holdingDetailsController.setTradePlaceHolder(trade)}"
+                                    process="@this" update="#{trade.adjustment ? 'adjustmentOP' : 'tradeOP'}"
+                                    oncomplete="#{trade.adjustment ? 'PF(\'adjustmentDLG\').show()' : 'PF(\'tradeDLG\').show()'}"
+                                    value="editieren" icon="pi pi-pencil"/>
+                        <p:separator/>
+                        <p:menuitem action="#{holdingDetailsController.removeTrade(trade)}" process="@this"
+                                    update="tradeDT tradeActionsOP performanceOP growl"
+                                    value="löschen" icon="pi pi-trash"/>
+                    </p:menuButton>
+                </p:column>
+
+            </p:dataTable>
+
+            <h:outputText value="Dividenden" styleClass="h2"/>
+
+            <p:outputPanel id="dividendActionsOP" styleClass="dataTableActions">
+                <p:commandButton value="Neue Dividende"
+                                 action="#{holdingDetailsController.createDividendPlaceHolder()}"
+                                 process="@this" update="dividendOP" oncomplete="PF('dividendDLG').show()"
+                                 icon="pi pi-plus" styleClass="float-right"/>
+
+                <p:commandButton value="Dividenden laden" rendered="#{holdingDetailsController.hasMissingDividends()}"
+                                 action="#{holdingDetailsController.setupMissingDividends()}"
+                                 process="@this" update="missingDividendOP"
+                                 oncomplete="PF('missingDividendDLG').show();"
+                                 icon="pi pi-refresh" styleClass="float-right"/>
+            </p:outputPanel>
+
+            <p:dataTable id="dividendDT" value="#{holdingDetailsController.dividends}" var="d" sortBy="#{d.date}"
+                         styleClass="ui-datatable-menucolumn" emptyMessage="Keine Dividenden vorhanden!">
+
+                <p:column headerText="Datum">
+                    <h:outputText value="#{d.date}"/>
+                </p:column>
+
+                <p:column headerText="Betrag (#{holdingCurrency})">
+                    <h:outputText value="#{d.amount}" converter="at.uibk.converter.PriceConverter"/>
+                </p:column>
+
+                <p:column headerText="Wechselkurs (#{defaultExchangeRateLabel})"
+                          rendered="#{not hasPortfolioCurrency}">
+                    <h:outputText value="#{d.defaultExchangeRate}" converter="at.uibk.converter.ExchangeRateConverter"/>
+                </p:column>
+
+                <p:column>
+                    <p:menuButton icon="pi pi-bars">
+                        <p:menuitem action="#{holdingDetailsController.setDividendPlaceHolder(d)}" process="@this"
+                                    update="dividendOP" oncomplete="PF('dividendDLG').show()"
+                                    icon="pi pi-pencil" value="editieren"/>
+                        <p:separator/>
+                        <p:menuitem action="#{holdingDetailsController.removeDividend(d)}" process="@this"
+                                    update="dividendDT dividendActionsOP performanceOP"
+                                    icon="pi pi-trash" value="löschen"/>
+                    </p:menuButton>
+                </p:column>
+            </p:dataTable>
+
+            <p:outputPanel id="tradeOP">
+                <p:dialog id="tradeDLG" widgetVar="tradeDLG"
+                          header="Kauf/Verkauf #{holdingDetailsController.mode.isEdit() ? 'editieren' : 'erstellen'}"
+                          rendered="#{not empty holdingDetailsController.tradePlaceHolder}" modal="true">
+                    <p:messages id="tradeMSGS"/>
+
+                    <p:panelGrid id="tradePG" columns="2" styleClass="ui-panelgrid-inputWithTotal">
+                        <p:outputLabel for="type" value="Typ:"/>
+                        <p:selectOneMenu id="type" value="#{holdingDetailsController.tradePlaceHolder.type}">
+                            <f:selectItem itemLabel="#{msg['tradeType.' += TradeType.BUY]}"
+                                          itemValue="#{TradeType.BUY}"/>
+                            <f:selectItem itemLabel="#{msg['tradeType.' += TradeType.SELL]}"
+                                          itemValue="#{TradeType.SELL}"/>
+                            <p:ajax event="itemSelect" update="totalCashFlowOT"/>
+                        </p:selectOneMenu>
+
+                        <p:outputLabel for="date" value="Datum:"/>
+                        <p:calendar id="date" value="#{holdingDetailsController.tradePlaceHolder.date}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                    converter="#{converterFactory.localDateConverter}">
+                            <p:ajax event="dateSelect" listener="#{holdingDetailsController.handleDateSelection()}"
+                                    update="@this priceProposal exchangeRateProposal"/>
+                        </p:calendar>
+
+                        <p:outputLabel for="quantity" value="Anteile:"/>
+                        <p:inputNumber id="quantity" value="#{holdingDetailsController.tradePlaceHolder.quantity}"
+                                       decimalPlaces="0" size="10"
+                                       validator="at.uibk.validator.BigDecimalGreaterZeroValidator">
+                            <p:ajax event="blur" update="@this totalCashFlowOT"/>
+                        </p:inputNumber>
+
+                        <p:outputLabel for="price"
+                                       value="Preis (#{holdingCurrency}): "/>
+                        <p:outputPanel>
+                            <p:inputNumber id="price" value="#{holdingDetailsController.tradePlaceHolder.price}"
+                                           decimalSeparator="," decimalPlaces="2" size="10"
+                                           validator="at.uibk.validator.BigDecimalGreaterZeroValidator">
+                                <p:ajax event="blur" update="@this totalCashFlowOT"/>
+                            </p:inputNumber>
+
+                            <p:outputPanel id="priceProposal" layout="inline">
+                                <p:commandLink id="priceCL"
+                                               rendered="#{not empty holdingDetailsController.priceProposal}"
+                                               action="#{holdingDetailsController.handlePriceProposalSelection()}"
+                                               process="@this" update="price totalCashFlowOT"
+                                               style="color: gray; margin-left: 1em">
+                                    <h:outputText value="#{holdingDetailsController.priceProposal.close}"
+                                                  converter="at.uibk.converter.PriceConverter"/>
+                                </p:commandLink>
+
+                                <i jsf:id="priceQuestionMark"
+                                   rendered="#{not empty holdingDetailsController.priceProposal}"
+                                   class="pi pi-question-circle" style="color: gray"/>
+
+                                <p:tooltip for="priceQuestionMark"
+                                           rendered="#{not empty holdingDetailsController.priceProposal}">
+                                    <o:outputFormat value="Letzter Preis vom {0}">
+                                        <o:param value="#{holdingDetailsController.priceProposal.date}"/>
+                                    </o:outputFormat>
+                                </p:tooltip>
+                            </p:outputPanel>
+
+                        </p:outputPanel>
+
+                        <p:outputLabel for="exchangeRate" value="Wechselkurs:" rendered="#{not hasPortfolioCurrency}"/>
+                        <p:outputPanel rendered="#{not hasPortfolioCurrency}">
+                            <p:inputNumber id="exchangeRate"
+                                           value="#{holdingDetailsController.tradePlaceHolder.exchangeRate}"
+                                           decimalSeparator="," decimalPlaces="4" size="10"
+                                           validator="at.uibk.validator.BigDecimalGreaterZeroValidator">
+                                <p:ajax event="blur" update="@this totalCashFlowOT"/>
+                            </p:inputNumber>
+
+                            <p:selectOneMenu
+                                    value="#{holdingDetailsController.tradePlaceHolder.exchangeRateDirection}">
+                                <f:selectItem itemValue="#{ExchangeRateDirection.DEFAULT}"
+                                              itemLabel="#{defaultExchangeRateLabel}"/>
+                                <f:selectItem itemValue="#{ExchangeRateDirection.REVERSE}"
+                                              itemLabel="#{reverseExchangeRateLabel}"/>
+                                <p:ajax event="itemSelect" update="exchangeRateProposal totalCashFlowOT"/>
+                            </p:selectOneMenu>
+
+                            <p:outputPanel id="exchangeRateProposal" layout="inline">
+                                <p:commandLink id="exchangeRateCL" rendered="#{not empty
+                                    holdingDetailsController.exchangeRateProposal}"
+                                               action="#{holdingDetailsController.handleExchangeRateSelection()}"
+                                               process="@this" update="exchangeRate totalCashFlowOT"
+                                               style="color: gray; margin-left: 1em">
+                                    <h:outputText value="#{holdingDetailsController.exchangeRateProposal.rate}"
+                                                  converter="at.uibk.converter.ExchangeRateConverter"/>
+
+                                </p:commandLink>
+
+                                <i jsf:id="exchangeRateQuestionMark"
+                                   rendered="#{not empty holdingDetailsController.exchangeRateProposal}"
+                                   class="pi pi-question-circle" style="color: gray"/>
+
+                                <p:tooltip for="exchangeRateQuestionMark">
+                                    <o:outputFormat value="Wechselkurs der EZB vom {0}"
+                                                    rendered="#{not empty holdingDetailsController.exchangeRateProposal}">
+                                        <o:param value="#{holdingDetailsController.exchangeRateProposal.date}"/>
+                                    </o:outputFormat>
+                                </p:tooltip>
+                            </p:outputPanel>
+
+                        </p:outputPanel>
+
+                        <p:outputLabel for="brokerage" value="Gebühren: "/>
+                        <p:outputPanel>
+                            <p:inputNumber id="brokerage" value="#{holdingDetailsController.tradePlaceHolder.brokerage}"
+                                           decimalSeparator="," decimalPlaces="2" size="10"
+                                           validator="at.uibk.validator.BigDecimalNotNegativeValidator">
+                                <p:ajax update="@this totalCashFlowOT"/>
+                            </p:inputNumber>
+                            <p:selectOneMenu id="brokerageCurrency"
+                                             value="#{holdingDetailsController.tradePlaceHolder.brokerageCurrency}">
+                                <f:selectItems
+                                        value="#{holdingDetailsController.tradePlaceHolder.brokerageCurrencies}"/>
+                                <p:ajax event="blur" update="totalCashFlowOT"/>
+                            </p:selectOneMenu>
+                        </p:outputPanel>
+
+                        <h:outputText value="Gesamt (#{portfolioCurrency}):"/>
+                        <h:outputText id="totalCashFlowOT"
+                                      value="#{holdingDetailsController.tradePlaceHolder.cashFlowInPortfolioCurrency}"
+                                      converter="at.uibk.converter.PriceConverter"/>
+
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('tradeDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+                        <p:commandButton action="#{holdingDetailsController.finishAction()}"
+                                         process="@this tradePG" update="tradePG"
+                                         oncomplete="hideDialogOnSuccess(args, 'tradeDLG')"
+                                         value="bestätigen" icon="pi pi-check"/>
+                    </p:panelGrid>
+
+                    <p:ajax event="close" listener="#{holdingDetailsController.resetInputData()}"
+                            update="tradeDT tradeActionsOP performanceOP"/>
+                </p:dialog>
+            </p:outputPanel>
+
+            <p:outputPanel id="adjustmentOP">
+                <p:dialog id="adjustmentDLG" widgetVar="adjustmentDLG"
+                          header="Anpassung #{holdingDetailsController.mode.isEdit() ? 'editieren' : 'erstellen'}"
+                          modal="true" rendered="#{not empty holdingDetailsController.tradePlaceHolder}">
+
+                    <p:messages id="adjustmentMSGS"/>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogContent">
+
+                        <p:outputLabel for="adjustmentType" value="Typ:"/>
+                        <p:selectOneMenu id="adjustmentType" value="#{holdingDetailsController.tradePlaceHolder.type}">
+                            <f:selectItem itemLabel="#{msg['tradeType.' += TradeType.SPLIT]}"
+                                          itemValue="#{TradeType.SPLIT}"/>
+                            <f:selectItem itemLabel="#{msg['tradeType.' += TradeType.CONSOLIDATION]}"
+                                          itemValue="#{TradeType.CONSOLIDATION}"/>
+                            <p:ajax event="itemSelect" update="adjustmentQuantityLabel"/>
+                        </p:selectOneMenu>
+
+                        <p:outputLabel for="adjustmentDate" value="Datum:"/>
+                        <p:calendar id="adjustmentDate" value="#{holdingDetailsController.tradePlaceHolder.date}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy"
+                                    converter="#{converterFactory.localDateConverter}">
+                        </p:calendar>
+
+                        <p:outputLabel id="adjustmentQuantityLabel" for="adjustmentQuantity"
+                                       value="#{holdingDetailsController.tradePlaceHolder.type eq TradeType.SPLIT ?
+                                       'Zusätzliche Anteile:' : 'Abgezogene Anteile:'}"/>
+                        <p:inputNumber id="adjustmentQuantity"
+                                       value="#{holdingDetailsController.tradePlaceHolder.quantity}"
+                                       decimalPlaces="0" size="10" validator="at.uibk.validator.BigDecimalGreaterZeroValidator">
+                            <p:ajax event="blur" process="@this" update="@this"/>
+                        </p:inputNumber>
+
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('adjustmentDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="bestätigen" action="#{holdingDetailsController.finishAction()}"
+                                         process="adjustmentDLG" update="adjustmentMSGS"
+                                         oncomplete="hideDialogOnSuccess(args, 'adjustmentDLG')"
+                                         icon="pi pi-check"/>
+                    </p:panelGrid>
+
+                    <p:ajax event="close" listener="#{holdingDetailsController.resetInputData()}"
+                            update="tradeDT tradeActionsOP performanceOP"/>
+                </p:dialog>
+            </p:outputPanel>
+
+            <p:outputPanel id="missingAdjustmentOP">
+                <p:dialog id="missingAdjustmentDLG" widgetVar="missingAdjustmentDLG"
+                          header="Anpassungen laden" modal="true"
+                          rendered="#{not empty holdingDetailsController.missingAdjustments}">
+
+                    <p:dataTable id="missingAdjustmentDT" value="#{holdingDetailsController.missingAdjustments}"
+                                 var="adjustment" sortBy="#{adjustment.date}" rowKey="#{adjustment.id}" editable="true"
+                                 rowSelectMode="checkbox"
+                                 selection="#{holdingDetailsController.selectedMissingAdjustments}"
+                                 style="width:700px" emptyMessage="Keine Anpassungen vorhanden!" styleClass="clear">
+
+                        <p:column selectionMode="multiple" style="width:16px;text-align:center"/>
+
+                        <p:column headerText="Datum">
+                            <p:cellEditor>
+                                <f:facet name="output">
+                                    <h:outputText value="#{adjustment.date}"/>
+                                </f:facet>
+                                <f:facet name="input">
+                                    <p:inputMask value="#{adjustment.date}" mask="99.99.9999" required="true"
+                                                 converter="#{converterFactory.localDateConverter}"/>
+                                </f:facet>
+                            </p:cellEditor>
+                        </p:column>
+
+                        <p:column headerText="Typ">
+                            <p:cellEditor>
+                                <f:facet name="output">
+                                    <h:outputText value="#{msg['tradeType.' += adjustment.type]}"/>
+                                </f:facet>
+                                <f:facet name="input">
+                                    <h:selectOneMenu value="#{adjustment.type}" style="width: 100%">
+                                        <f:selectItem itemLabel="#{msg['tradeType.' += TradeType.SPLIT]}"
+                                                      itemValue="#{TradeType.SPLIT}"/>
+                                        <f:selectItem itemLabel="#{msg['tradeType.' += TradeType.CONSOLIDATION]}"
+                                                      itemValue="#{TradeType.CONSOLIDATION}"/>
+                                    </h:selectOneMenu>
+                                </f:facet>
+                            </p:cellEditor>
+                        </p:column>
+
+                        <p:column headerText="+/- Anteile">
+                            <p:cellEditor>
+                                <f:facet name="output">
+                                    <h:outputText value="#{adjustment.quantity}">
+                                        <f:convertNumber type="number" maxFractionDigits="2"/>
+                                    </h:outputText>
+                                </f:facet>
+                                <f:facet name="input">
+                                    <p:inputNumber value="#{adjustment.quantity}" decimalPlaces="2"
+                                                   validator="at.uibk.validator.BigDecimalGreaterZeroValidator"/>
+                                </f:facet>
+                            </p:cellEditor>
+                        </p:column>
+
+                        <p:column>
+                            <p:rowEditor/>
+                        </p:column>
+
+                    </p:dataTable>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('missingAdjustmentDLG').hide(); return false;"
+                                  styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="bestätigen" process="missingAdjustmentDLG"
+                                         action="#{holdingDetailsController.persistMissingAdjustments()}"
+                                         oncomplete="hideDialogOnSuccess(args, 'missingAdjustmentDLG')"
+                                         icon="pi pi-check"/>
+
+                    </p:panelGrid>
+
+                    <p:ajax event="close" listener="#{holdingDetailsController.resetMissingAdjustments()}"
+                            update="tradeDT tradeActionsOP performanceOP"/>
+                </p:dialog>
+
+            </p:outputPanel>
+
+            <p:outputPanel id="dividendOP">
+                <p:dialog id="dividendDLG" widgetVar="dividendDLG"
+                          header="Dividende #{holdingDetailsController.mode.isEdit() ? 'editieren' : 'erstellen'}"
+                          modal="true" rendered="#{not empty holdingDetailsController.dividendPlaceHolder}">
+
+                    <p:messages id="dividendMSGS"/>
+                    <!--<p:messages><p:autoUpdate/></p:messages>-->
+
+                    <p:panelGrid id="dividendPG" columns="2" styleClass="ui-panelgrid-inputWithTotal">
+
+                        <p:outputLabel for="dividendDate" value="Datum:"/>
+                        <p:calendar id="dividendDate" value="#{holdingDetailsController.dividendPlaceHolder.date}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy"
+                                    converter="#{converterFactory.localDateConverter}">
+                            <p:ajax event="dateSelect" listener="#{holdingDetailsController.handleDateSelection()}"
+                                    update="dividendExchangeRateProposal"/>
+                        </p:calendar>
+
+                        <o:outputLabel for="amount" value="Betrag (#{holdingCurrency}): "/>
+                        <p:inputNumber id="amount" value="#{holdingDetailsController.dividendPlaceHolder.amount}"
+                                       decimalSeparator="," decimalPlaces="2" size="10"
+                                       validator="at.uibk.validator.BigDecimalGreaterZeroValidator">
+                            <p:ajax event="blur" update="@this dividendTotalOT"/>
+                        </p:inputNumber>
+
+                        <p:outputLabel for="dividendExchangeRate" value="Wechselkurs:"
+                                       rendered="#{not hasPortfolioCurrency}"/>
+                        <p:outputPanel rendered="#{not hasPortfolioCurrency}">
+                            <p:inputNumber id="dividendExchangeRate"
+                                           value="#{holdingDetailsController.dividendPlaceHolder.exchangeRate}"
+                                           decimalSeparator="," decimalPlaces="4" size="10"
+                                           validator="at.uibk.validator.BigDecimalGreaterZeroValidator">
+                                <p:ajax event="blur" update="@this dividendTotalOT"/>
+                            </p:inputNumber>
+
+                            <p:selectOneMenu
+                                    value="#{holdingDetailsController.dividendPlaceHolder.exchangeRateDirection}">
+                                <f:selectItem itemValue="#{ExchangeRateDirection.DEFAULT}"
+                                              itemLabel="#{defaultExchangeRateLabel}"/>
+                                <f:selectItem itemValue="#{ExchangeRateDirection.REVERSE}"
+                                              itemLabel="#{reverseExchangeRateLabel}"/>
+                                <p:ajax event="itemSelect" update="dividendExchangeRateProposal dividendTotalOT"/>
+                            </p:selectOneMenu>
+
+                            <p:outputPanel id="dividendExchangeRateProposal" layout="inline">
+                                <p:commandLink id="dividendExchangeRateCL"
+                                               rendered="#{not empty holdingDetailsController.exchangeRateProposal}"
+                                               action="#{holdingDetailsController.handleExchangeRateSelection()}"
+                                               process="@this" update="dividendExchangeRate dividendTotalOT"
+                                               style="color: gray; margin-left: 1em">
+                                    <h:outputText value="#{holdingDetailsController.exchangeRateProposal.rate}">
+                                        <f:convertNumber type="number" maxFractionDigits="4"/>
+                                    </h:outputText>
+                                </p:commandLink>
+
+                                <i jsf:id="dividendExchangeRateQuestionMark"
+                                   rendered="#{not empty holdingDetailsController.exchangeRateProposal}"
+                                   class="pi pi-question-circle" style="color: gray"/>
+
+                                <p:tooltip for="dividendExchangeRateQuestionMark">
+                                    <o:outputFormat value="Wechselkurs der EZB vom {0}"
+                                                    rendered="#{not empty holdingDetailsController.exchangeRateProposal}">
+                                        <o:param value="#{holdingDetailsController.exchangeRateProposal.date}"/>
+                                    </o:outputFormat>
+                                </p:tooltip>
+                            </p:outputPanel>
+
+                        </p:outputPanel>
+
+                        <h:outputText value="Gesamt (#{portfolioCurrency}):" rendered="#{not hasPortfolioCurrency}"/>
+                        <h:outputText id="dividendTotalOT"
+                                      value="#{holdingDetailsController.dividendPlaceHolder.amountInPortfolioCurrency}"
+                                      rendered="#{not hasPortfolioCurrency}">
+                            <f:convertNumber maxFractionDigits="2"/>
+                        </h:outputText>
+
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('dividendDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="bestätigen" action="#{holdingDetailsController.finishAction()}"
+                                         process="@this dividendPG" update="dividendPG"
+                                         oncomplete="hideDialogOnSuccess(args, 'dividendDLG')"
+                                         icon="pi pi-check"/>
+                    </p:panelGrid>
+
+                    <p:ajax event="close" listener="#{holdingDetailsController.resetInputData()}"
+                            update="dividendDT dividendActionsOP performanceOP"/>
+                </p:dialog>
+            </p:outputPanel>
+
+            <p:outputPanel id="missingDividendOP">
+                <p:dialog id="missingDividendDLG" widgetVar="missingDividendDLG" header="Dividenden laden" modal="true"
+                          rendered="#{not empty holdingDetailsController.missingDividends}">
+
+                    <p:messages id="missingDividendMSGS"/>
+
+                    <p:dataTable id="missingDividendDT" value="#{holdingDetailsController.missingDividends}"
+                                 var="dividend" sortBy="#{dividend.date}" rowKey="#{dividend.id}" editable="true"
+                                 rowSelectMode="checkbox"
+                                 selection="#{holdingDetailsController.selectedMissingDividends}"
+                                 style="width:700px" emptyMessage="Keine Dividenden vorhanden!" styleClass="clear">
+
+                        <p:column selectionMode="multiple" style="width:16px;text-align:center"/>
+
+                        <p:column headerText="Datum">
+                            <p:cellEditor>
+                                <f:facet name="output">
+                                    <h:outputText value="#{dividend.date}"/>
+                                </f:facet>
+                                <f:facet name="input">
+                                    <p:inputMask value="#{dividend.date}" mask="99.99.9999" required="true"
+                                                 converter="#{converterFactory.localDateConverter}"/>
+                                </f:facet>
+                            </p:cellEditor>
+                        </p:column>
+
+                        <p:column headerText="Betrag (#{holdingCurrency})">
+                            <p:cellEditor>
+                                <f:facet name="output">
+                                    <h:outputText value="#{dividend.amount}">
+                                        <f:convertNumber maxFractionDigits="2"/>
+                                    </h:outputText>
+                                </f:facet>
+                                <f:facet name="input">
+                                    <p:inputNumber value="#{dividend.amount}" decimalPlaces="2"
+                                                   validator="at.uibk.validator.BigDecimalGreaterZeroValidator"/>
+                                </f:facet>
+                            </p:cellEditor>
+                        </p:column>
+
+                        <p:column headerText="Wechselkurs" rendered="#{not hasPortfolioCurrency}">
+                            <p:cellEditor>
+                                <f:facet name="output">
+                                    <o:outputFormat value="{0} ({1})">
+                                        <o:param value="#{dividend.exchangeRate}"
+                                                 converter="at.uibk.converter.ExchangeRateConverter"/>
+                                        <o:param value="#{dividend.exchangeRateDirection ==
+                                        ExchangeRateDirection.DEFAULT ? defaultExchangeRateLabel :
+                                        reverseExchangeRateLabel}"/>
+                                    </o:outputFormat>
+                                </f:facet>
+                                <f:facet name="input">
+                                    <p:inputNumber value="#{dividend.exchangeRate}" decimalPlaces="4"
+                                                   validator="at.uibk.validator.BigDecimalGreaterZeroValidator"/>
+                                    <p:selectOneMenu value="#{dividend.exchangeRateDirection}" style="width: 100%">
+                                        <f:selectItem itemValue="#{ExchangeRateDirection.DEFAULT}"
+                                                      itemLabel="#{defaultExchangeRateLabel}"/>
+                                        <f:selectItem itemValue="#{ExchangeRateDirection.REVERSE}"
+                                                      itemLabel="#{reverseExchangeRateLabel}"/>
+                                    </p:selectOneMenu>
+                                </f:facet>
+                            </p:cellEditor>
+                        </p:column>
+
+                        <p:column>
+                            <p:rowEditor/>
+                        </p:column>
+
+                    </p:dataTable>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('missingDividendDLG').hide(); return false;"
+                                  styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="bestätigen"
+                                         action="#{holdingDetailsController.persistMissingDividends()}"
+                                         process="missingDividendDLG" update="missingDividendMSGS"
+                                         oncomplete="hideDialogOnSuccess(args, 'missingDividendDLG')"
+                                         icon="pi pi-check"/>
+                    </p:panelGrid>
+
+                    <p:ajax event="close" listener="#{holdingDetailsController.resetMissingDividends()}"
+                            update="dividendDT dividendActionsOP performanceOP"/>
+                </p:dialog>
+
+                <p:outputPanel id="dateRangeOP">
+                    <p:dialog id="dateRangeDLG" widgetVar="dateRangeDLG" header="Datumsbereich angeben" modal="true">
+                        <p:messages id="dateRangeMSGS"/>
+                        <p:panelGrid columns="2" styleClass="chartDateRange">
+                            <p:outputLabel value="Von:" for="startDate"/>
+                            <p:calendar id="startDate" value="#{holdingDetailsController.chartDateRange.startDate}"
+                                        mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                        converter="#{converterFactory.localDateConverter}">
+                            </p:calendar>
+
+                            <p:outputLabel value="Bis:" for="endDate"/>
+                            <p:calendar id="endDate" value="#{holdingDetailsController.chartDateRange.endDate}"
+                                        mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                        converter="#{converterFactory.localDateConverter}">
+                            </p:calendar>
+                        </p:panelGrid>
+
+                        <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                            <p:button icon="pi pi-times" value="abbrechen"
+                                      onclick="PF('dateRangeDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+                            <p:commandButton value="ok" action="#{holdingDetailsController.applyChartDateRange()}"
+                                             process="dateRangeDLG" update="lineChart dateRangeMSGS dateRangeCL"
+                                             icon="pi pi-check"/>
+                        </p:panelGrid>
+
+                    </p:dialog>
+                </p:outputPanel>
+
+            </p:outputPanel>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

@@ -1,0 +1,283 @@
+<ui:composition template="/templates/main/mainTemplate.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:p="http://primefaces.org/ui"
+                xmlns:o="http://omnifaces.org/ui">
+    <ui:define name="content">
+        <p:importConstants type="at.uibk.controller.search.ChartToolController"/>
+
+        <h:form prependId="false">
+            <h:outputText value="Chart-Tool" styleClass="h1"/>
+
+            <p:panelGrid id="chartOptions" columns="7" styleClass="chartToolbar">
+                <p:menuButton value="Hinzufügen">
+                    <p:menuitem value="Wertpapier" action="#{chartToolController.createChartEntry()}"
+                                ajax="true" process="@this" update="addSymbolOP"
+                                oncomplete="PF('addSymbolDLG').show()"/>
+                    <p:separator/>
+                    <p:menuitem value="Index" action="#{chartToolController.createChartEntry()}"
+                                ajax="true" process="@this" update="addIndexOP" oncomplete="PF('addIndexDLG').show()"/>
+                </p:menuButton>
+
+
+                <p:commandLink action="#{chartToolController.createChartPeriod()}"
+                               process="@this" update="dateRangeOP" oncomplete="PF('dateRangeDLG').show()">
+                    <o:outputFormat value="{0} - {1}"
+                                    rendered="#{not empty chartToolController.lineChart.startDate}">
+                        <o:param value="#{chartToolController.lineChart.startDate}"/>
+                        <o:param value="#{chartToolController.lineChart.endDate}"/>
+                    </o:outputFormat>
+                    <h:outputText value="Datumsbereich" rendered="#{empty chartToolController.lineChart.startDate}"/>
+                </p:commandLink>
+
+                <p:selectOneMenu value="#{chartToolController.lineChart.monthsBack}">
+                    <f:selectItems value="#{chartToolController.lineChart.timeRanges}"
+                                   var="timeRange" itemValue="#{timeRange.monthsBack}"
+                                   itemLabel="#{msg['chartTimeRange.' += timeRange]}"/>
+
+                    <p:ajax event="itemSelect" listener="#{chartToolController.updateLineChartModel()}"
+                            update="lineChart chartOptions"/>
+                </p:selectOneMenu>
+
+                <p:selectOneMenu value="#{chartToolController.lineChart.valueType}">
+                    <f:selectItems value="#{chartToolController.lineChart.valueTypes}"/>
+                    <p:ajax event="itemSelect" listener="#{chartToolController.updateLineChartModel()}"
+                            update="lineChart"/>
+                </p:selectOneMenu>
+
+                <p:selectBooleanButton value="#{chartToolController.lineChart.percentMode}" onLabel="%"
+                                       offLabel="%">
+                    <p:ajax update="lineChart" listener="#{chartToolController.updateLineChartModel()}"/>
+                </p:selectBooleanButton>
+
+                <p:commandButton process="@this" update="settingsOP" oncomplete="PF('settingsDLG').show()"
+                                 icon="pi pi-bars"/>
+            </p:panelGrid>
+
+            <p:lineChart id="lineChart" model="#{chartToolController.lineChartModel}"
+                         style="width: 100%; height: 60vh"/>
+
+            <p:outputPanel id="legendOP">
+                <p:panelGrid id="legendPG" styleClass="chartLegend"
+                             rendered="#{not empty chartToolController.lineChart.chartEntries}">
+                    <p:row>
+                        <ui:repeat value="#{chartToolController.lineChart.chartEntries}"
+                                   var="chartEntry">
+                            <p:column>
+                                <p:outputPanel style="border-color:#{chartEntry.hexColor}">
+                                    <p:commandLink
+                                            action="#{chartToolController.setChartEntry(chartEntry)}"
+                                            process="@this" update="chartEntrySettingsOP"
+                                            oncomplete="PF('chartEntrySettingsDLG').show()">
+                                        <span style="#{chartEntry.visible ? '' : 'text-decoration: line-through;'}">
+                                            #{chartEntry.id}
+                                        </span>
+                                    </p:commandLink>
+                                    <p:commandLink value="x"
+                                                   action="#{chartToolController.removeChartEntry(chartEntry)}"
+                                                   process="@this" update="lineChart legendOP chartOptions">
+                                    </p:commandLink>
+                                </p:outputPanel>
+                            </p:column>
+                        </ui:repeat>
+                    </p:row>
+                </p:panelGrid>
+            </p:outputPanel>
+
+            <p:outputPanel id="addSymbolOP">
+                <p:dialog id="addSymbolDLG" widgetVar="addSymbolDLG" header="Wertpapier hinzufügen" modal="true"
+                          rendered="#{not empty chartToolController.chartEntry}">
+                    <p:messages id="addSymbolMSGS"/>
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogContent">
+                        <p:outputLabel value="Wertpapier:"/>
+                        <p:autoComplete id="symbolAC" value="#{chartToolController.selectedInstrument}"
+                                        var="instrument" itemValue="#{instrument}"
+                                        itemLabel="#{instrument.stockIdentifier}"
+                                        completeMethod="#{chartToolController.completeMethod}"
+                                        forceSelection="true" minQueryLength="1" queryDelay="500" maxResults="10"
+                                        placeholder="Name, Symbol, ISIN" size="35">
+                            <p:column>
+                                <h:outputText value="#{instrument.symbol}"/>
+                            </p:column>
+                            <p:column>
+                                <h:outputText value="#{instrument.name}"/>
+                            </p:column>
+                            <p:column>
+                                <h:outputText value="#{instrument.stockExchange.name}"/>
+                            </p:column>
+                        </p:autoComplete>
+
+                        <p:outputLabel value="Farbe:"/>
+                        <p:colorPicker value="#{chartToolController.chartEntry.color}" mode="popup"/>
+
+                        <p:outputLabel value="Preislinie:"/>
+                        <p:selectBooleanCheckbox value="#{chartToolController.chartEntry.withPriceLine}"/>
+
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('addSymbolDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+
+                        <p:commandButton value="ok" action="#{chartToolController.addDataSet()}"
+                                         process="addSymbolDLG" update="addSymbolMSGS symbolAC"
+                                         onstart="PF('statusDialog').show()" oncomplete="PF('statusDialog').hide()"
+                                         icon="pi pi-check"/>
+                    </p:panelGrid>
+
+                    <p:ajax event="close" update="addSymbolOP lineChart legendOP chartOptions"
+                            listener="#{chartToolController.cleanUp()}"/>
+                </p:dialog>
+            </p:outputPanel>
+
+            <p:outputPanel id="addIndexOP">
+                <p:dialog id="addIndexDLG" widgetVar="addIndexDLG" header="Benchmark hinzufügen" modal="true"
+                          rendered="#{not empty chartToolController.chartEntry}">
+                    <p:messages id="addIndexMSGS"/>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogContent">
+                        <p:outputLabel value="Index:"/>
+                        <p:selectOneMenu value="#{chartToolController.stockIndex}">
+                            <f:selectItems value="#{chartToolController.stockIndices}" var="stockIndex"
+                                           itemLabel="#{stockIndex.abbreviation}" itemValue="#{stockIndex}"/>
+                        </p:selectOneMenu>
+
+                        <p:outputLabel value="Farbe:"/>
+                        <p:colorPicker value="#{chartToolController.chartEntry.color}" mode="popup"/>
+
+                        <p:outputLabel value="Preisline:"/>
+                        <p:selectBooleanCheckbox value="#{chartToolController.chartEntry.withPriceLine}"/>
+
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('addIndexDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="ok" action="#{chartToolController.addStockIndex()}"
+                                         process="addIndexDLG" update="addIndexMSGS"
+                                         onstart="PF('statusDialog').show()" oncomplete="PF('statusDialog').hide()"
+                                         icon="pi pi-check"/>
+                    </p:panelGrid>
+
+                    <p:ajax event="close" listener="#{chartToolController.cleanUp()}"
+                            update="addIndexOP lineChart legendOP chartOptions"/>
+                </p:dialog>
+            </p:outputPanel>
+
+            <p:outputPanel id="settingsOP">
+                <p:dialog id="settingsDLG" widgetVar="settingsDLG" header="Chart Einstellungen" modal="true">
+
+                    <p:panelGrid id="settingsDT" styleClass="chartsettings">
+                        <p:row>
+                            <p:column/>
+                            <p:column>Symbol</p:column>
+                            <p:column>Sichtbar</p:column>
+                            <p:column>Farbe</p:column>
+                            <p:column>Preislinie</p:column>
+                        </p:row>
+                        <p:repeat value="#{chartToolController.lineChart.chartEntries}"
+                                  var="chartEntry">
+                            <p:row>
+                                <p:column>
+                                    <p:commandButton
+                                            action="#{chartToolController.lineChart.removeDataSet(chartEntry)}"
+                                            process="@this" update="settingsDT" icon="pi pi-trash"/>
+                                </p:column>
+                                <p:column>
+                                    <h:outputText value="#{chartEntry.id}"/>
+                                </p:column>
+                                <p:column>
+                                    <p:selectBooleanCheckbox value="#{chartEntry.visible}"/>
+                                </p:column>
+                                <p:column>
+                                    <p:colorPicker value="#{chartEntry.color}" mode="popup"/>
+                                </p:column>
+                                <p:column>
+                                    <p:selectBooleanCheckbox value="#{chartEntry.withPriceLine}"/>
+                                </p:column>
+                            </p:row>
+                        </p:repeat>
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('settingsDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="ok" icon="pi pi-check" process="settingsDLG"
+                                         oncomplete="hideDialogOnSuccess(args, 'settingsDLG')"/>
+                    </p:panelGrid>
+
+                    <p:ajax event="close" update="lineChart legendOP chartOptions"
+                            listener="#{chartToolController.updateLineChartModel()}"/>
+
+                </p:dialog>
+            </p:outputPanel>
+
+            <p:outputPanel id="dateRangeOP">
+                <p:dialog id="dateRangeDLG" widgetVar="dateRangeDLG" header="Datumsbereich angeben" modal="true">
+                    <p:messages id="dateRangeMSGS"/>
+                    <p:panelGrid columns="2" styleClass="chartDateRange">
+                        <p:outputLabel value="Von:" for="startDate"/>
+                        <p:calendar id="startDate" value="#{chartToolController.chartDateRange.startDate}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                    converter="#{converterFactory.localDateConverter}">
+                        </p:calendar>
+
+                        <p:outputLabel value="Bis:" for="endDate"/>
+                        <p:calendar id="endDate" value="#{chartToolController.chartDateRange.endDate}"
+                                    mode="popup" showOn="button" pattern="dd.MM.yyyy" locale="de" navigator="true"
+                                    converter="#{converterFactory.localDateConverter}">
+                        </p:calendar>
+                    </p:panelGrid>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('dateRangeDLG').hide(); return false;" styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="ok" action="#{chartToolController.applyChartPeriod()}"
+                                         process="dateRangeDLG" update="lineChart dateRangeMSGS chartOptions"
+                                         icon="pi pi-check"/>
+                    </p:panelGrid>
+
+                </p:dialog>
+            </p:outputPanel>
+
+            <p:outputPanel id="chartEntrySettingsOP">
+                <p:dialog id="chartEntrySettingsDLG" widgetVar="chartEntrySettingsDLG"
+                          header="#{chartToolController.chartEntry.id}"
+                          modal="true">
+                    <p:panelGrid id="chartEntrySettingsDT" columns="2" styleClass="ui-noborder">
+
+                        <h:outputText value="Farbe:"/>
+                        <p:colorPicker value="#{chartToolController.chartEntry.color}" mode="popup"/>
+
+                        <h:outputText value="Sichtbar:"/>
+                        <p:selectBooleanCheckbox value="#{chartToolController.chartEntry.visible}"/>
+
+                        <h:outputText value="Preislinie:"/>
+                        <p:selectBooleanCheckbox value="#{chartToolController.chartEntry.withPriceLine}"/>
+                    </p:panelGrid>
+
+                    <p:separator/>
+
+                    <p:panelGrid columns="2" styleClass="ui-panelgrid-dialogButtons">
+                        <p:button icon="pi pi-times" value="abbrechen"
+                                  onclick="PF('chartEntrySettingsDLG').hide(); return false;"
+                                  styleClass="ui-button-cancel"/>
+
+                        <p:commandButton value="ok" icon="pi pi-check"
+                                         action="#{chartToolController.updateLineChartModel()}"
+                                         process="chartEntrySettingsDLG" update="lineChart legendOP"
+                                         oncomplete="hideDialogOnSuccess(args, 'chartEntrySettingsDLG')"/>
+                    </p:panelGrid>
+
+                </p:dialog>
+            </p:outputPanel>
+
+        </h:form>
+    </ui:define>
+</ui:composition>

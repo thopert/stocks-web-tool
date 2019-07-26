@@ -1,0 +1,29 @@
+<ui:composition template="/templates/outer/outerTemplate.xhtml"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns:p="http://primefaces.org/ui">
+    <ui:define name="content">
+        <h:form prependId="false">
+            <p:focus/>
+            <p:messages id="loginMSGS" style="width: 100%"/>
+            <div class="ui-g">
+                <p:fieldset legend="Anmeldung"
+                            styleClass="ui-g-7 ui-md-5 ui-lg-4 outerFieldSet">
+                    <p:panelGrid columns="1" styleClass="ui-panelgrid-blank ui-fluid" layout="grid"
+                                 columnClasses="ui-grid-col-12">
+                        <p:outputLabel for="email" value="#{msg['login.email']}"/>
+                        <p:inputText id="email" value="#{accessController.email}"/>
+
+                        <p:outputLabel for="password" value="#{msg['login.password']}"/>
+                        <p:password id="password" value="#{accessController.password}"/>
+
+                        <p:commandButton value="ok"
+                                         action="#{accessController.login}"
+                                         process="@(.ui-fieldset)" update="loginMSGS"/>
+                    </p:panelGrid>
+                </p:fieldset>
+            </div>
+        </h:form>
+    </ui:define>
+</ui:composition>
